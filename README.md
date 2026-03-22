@@ -17,3 +17,17 @@ You must have FFmpeg installed on your Mac to use this application.
 Open your Terminal and run the following command:
 ```bash
 brew install ffmpeg
+
+## 🚀 Usage
+
+### 1. Add Files
+Launch the app and **drag & drop** the `.mp4` or `.mov` files you want to merge into the main window.
+
+### 2. Configure Options *(Optional)*
+From the options panel on the right, you can toggle:
+- **Resolution**: Upscale to `1080p FHD` or `4K UHD`.
+- **Filters**: Enable `Fix Jitter` or `Normalize Audio`.
+- **Target Format**: Select `HEVC (High Compression)` to export as a `.mov` file.
+
+### 3. Merge!
+Click the **`Merge Files`** button, choose the destination folder, and the fully automated merging process will begin!
