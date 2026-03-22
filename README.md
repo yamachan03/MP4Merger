@@ -33,3 +33,11 @@ From the options panel on the right, you can toggle:
 
 ### 3. Merge!
 Click the **`Merge Files`** button, choose the destination folder, and the fully automated merging process will begin!
+
+
+## 📄 License
+This project is licensed under the [MIT License](LICENSE).
+
+### Acknowledgments
+This software uses libraries from the [FFmpeg](https://ffmpeg.org) project under the LGPLv2.1.
+FFmpeg is a trademark of Fabrice Bellard, originator of the FFmpeg project.
