@@ -4,10 +4,18 @@ import SwiftUI
 struct MP4MergerApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
+    @StateObject private var languageManager = LanguageManager()
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .frame(minWidth: 500, idealWidth: 500, maxWidth: CGFloat.infinity, minHeight: 300, idealHeight: 380, maxHeight: CGFloat.infinity)
+                .environmentObject(languageManager)
+                .frame(minWidth: 500, idealWidth: 500, maxWidth: .infinity, minHeight: 500, idealHeight: 600, maxHeight: .infinity)
+        }
+        
+        Settings {
+            SettingsView()
+                .environmentObject(languageManager)
         }
     }
 }

@@ -173,7 +173,7 @@ struct FFmpegRunner {
         }
     }
 
-    func merge(files: [URL], fastMerge: Bool, normalizeAudio: Bool, fixJitter: Bool, useHEVC: Bool, destinationURL: URL, targetHeight: Int?, metadata: [String: String]? = nil, finderTags: [String]? = nil, onProgress: @escaping (Double, TimeInterval) -> Void) async throws -> URL {
+    func merge(files: [URL], fastMerge: Bool, normalizeAudio: Bool, fixJitter: Bool, enableStabilize: Bool = false, stabilizeSmoothing: Int = 60, useHEVC: Bool, destinationURL: URL, targetHeight: Int?, metadata: [String: String]? = nil, finderTags: [String]? = nil, onProgress: @escaping (Double, TimeInterval, String?) -> Void) async throws -> URL {
         let fileManager = FileManager.default
         let tempDir = fileManager.temporaryDirectory
         
@@ -195,6 +195,72 @@ struct FFmpegRunner {
             totalDuration += duration
         }
         
+        // --- PRE-PROCESSING: Gimbal Stabilization ---
+        var workingFiles = files
+        var tempStabilizedFiles: [URL] = []
+        
+        defer {
+            // Clean up intermediate stabilized files at the end
+            for url in tempStabilizedFiles {
+                try? fileManager.removeItem(at: url)
+            }
+        }
+        
+        if enableStabilize {
+            for (index, file) in workingFiles.enumerated() {
+                let duration = fileDurations[index]
+                let clipNum = index + 1
+                let totalClips = workingFiles.count
+                
+                let trfURL = tempDir.appendingPathComponent("transform_\(UUID()).trf")
+                let stabURL = tempDir.appendingPathComponent("stabilized_\(UUID()).mp4")
+                
+                defer {
+                    try? fileManager.removeItem(at: trfURL)
+                }
+                
+                // Pass 1: vidstabdetect
+                let pass1Args = [
+                    "-i", file.path,
+                    "-vf", "vidstabdetect=shakiness=5:accuracy=15:result=\(trfURL.path)",
+                    "-f", "null", "-"
+                ]
+                print("🎥 Stabilize Pass 1 for clip \(clipNum)")
+                try await runFFmpeg(arguments: pass1Args, totalDuration: duration, offsetDuration: 0, startTime: Date()) { prog, rem in
+                    onProgress(prog, rem, LanguageManager.shared.localizedDynamic("Stabilize Pass 1", args: ["\(clipNum)", "\(totalClips)"]))
+                }
+                
+                // Pass 2: vidstabtransform
+                let pass2Args = [
+                    "-hwaccel", "videotoolbox",
+                    "-i", file.path,
+                    "-vf", "vidstabtransform=input=\(trfURL.path):smoothing=\(stabilizeSmoothing):crop=black:optzoom=1",
+                    "-c:v", "h264_videotoolbox", "-b:v", "20M", // High bitrate to preserve quality
+                    "-c:a", "copy",
+                    "-y", stabURL.path
+                ]
+                print("🎥 Stabilize Pass 2 for clip \(clipNum)")
+                try await runFFmpeg(arguments: pass2Args, totalDuration: duration, offsetDuration: 0, startTime: Date()) { prog, rem in
+                    onProgress(prog, rem, LanguageManager.shared.localizedDynamic("Stabilize Pass 2", args: ["\(clipNum)", "\(totalClips)"]))
+                }
+                
+                tempStabilizedFiles.append(stabURL)
+            }
+            
+            // Override working files
+            workingFiles = tempStabilizedFiles
+            
+            // Re-calculate durations for the new files
+            fileDurations.removeAll()
+            totalDuration = 0
+            for file in workingFiles {
+                let asset = AVURLAsset(url: file)
+                let duration = (try? await asset.load(.duration))?.seconds ?? 0
+                fileDurations.append(duration)
+                totalDuration += duration
+            }
+        }
+        
         // Determine Mode
         let filtersActive = normalizeAudio || fixJitter || targetHeight != nil || useHEVC
         let effectiveFastMerge = fastMerge || !filtersActive
@@ -209,7 +275,7 @@ struct FFmpegRunner {
             // ... TIER 1 Logic ...
             let concatListURL = tempDir.appendingPathComponent("concat_list_\(UUID()).txt")
             var concatContent = ""
-            for file in files {
+            for file in workingFiles {
                 let escapedPath = file.path.replacingOccurrences(of: "'", with: "'\\''")
                 concatContent += "file '\(escapedPath)'\n"
             }
@@ -223,14 +289,14 @@ struct FFmpegRunner {
                     "-i", concatListURL.path
                 ]
                 
-                if let first = files.first {
+                if let first = workingFiles.first {
                     args.append(contentsOf: ["-i", first.path, "-map_metadata", "1", "-map", "0"])
                 }
                 
                 args.append(contentsOf: ["-c", "copy", "-movflags", "use_metadata_tags", "-y", outputURL.path])
                 
                 print("🚀 Attempting Tier 1 (Direct Copy)...")
-                try await runFFmpeg(arguments: args, totalDuration: totalDuration, offsetDuration: 0, startTime: startTime, onProgress: onProgress)
+                try await runFFmpeg(arguments: args, totalDuration: totalDuration, offsetDuration: 0, startTime: startTime) { prog, rem in onProgress(prog, rem, nil) }
                 try? fileManager.removeItem(at: concatListURL)
 
                 // Verify
@@ -252,7 +318,7 @@ struct FFmpegRunner {
             print("🔄 Attempting Tier 2 (Rewrap via TS)...")
             
             // 1. Check Codec
-            let firstCodec = await getVideoCodec(for: files.first!)
+            let firstCodec = await getVideoCodec(for: workingFiles.first!)
             let bsf: String?
             if firstCodec == "h264" { bsf = "h264_mp4toannexb" }
             else if firstCodec == "hevc" { bsf = "hevc_mp4toannexb" }
@@ -264,7 +330,7 @@ struct FFmpegRunner {
             
             do {
                 // Convert each to TS
-                for (idx, file) in files.enumerated() {
+                for (idx, file) in workingFiles.enumerated() {
                     let tsURL = tempDir.appendingPathComponent("part_\(UUID()).ts")
                     tsFiles.append(tsURL)
                     
@@ -272,7 +338,7 @@ struct FFmpegRunner {
                     // remove null bsf if nil
                     if bsf == nil { args.remove(at: 4); args.remove(at: 4) }
                     
-                    try await runFFmpeg(arguments: args, totalDuration: totalDuration, offsetDuration: accumulated, startTime: startTime, onProgress: onProgress)
+                    try await runFFmpeg(arguments: args, totalDuration: totalDuration, offsetDuration: accumulated, startTime: startTime) { prog, rem in onProgress(prog, rem, nil) }
                     accumulated += fileDurations[idx]
                 }
                 
@@ -321,13 +387,13 @@ struct FFmpegRunner {
         var filterComplex = ""
         
         // 1. Inputs
-        for file in files {
+        for file in workingFiles {
             // Enable Hardware Decoding
             args.append(contentsOf: ["-hwaccel", "videotoolbox", "-i", file.path])
         }
         
         // 2. Filter Construction
-        for i in 0..<files.count {
+        for i in 0..<workingFiles.count {
             // Video
             var vOps = "fps=30,format=yuv420p"
             if fixJitter { vOps += ",yadif=0:-1:0" }
@@ -341,10 +407,10 @@ struct FFmpegRunner {
         }
         
         // Concat Command
-        for i in 0..<files.count {
+        for i in 0..<workingFiles.count {
             filterComplex += "[v\(i)][a\(i)]"
         }
-        filterComplex += "concat=n=\(files.count):v=1:a=1[outv][outa]"
+        filterComplex += "concat=n=\(workingFiles.count):v=1:a=1[outv][outa]"
         
         args.append(contentsOf: ["-filter_complex", filterComplex])
         args.append(contentsOf: ["-map", "[outv]", "-map", "[outa]"])
@@ -373,9 +439,7 @@ struct FFmpegRunner {
             offsetDuration: 0,
             startTime: tier3StartTime,
             onProgress: { prog, remaining in
-                // Proxy the progress, but maybe we want to inform UI we are in "Retry" mode?
-                // The UI just takes double/TimeInterval.
-                onProgress(prog, remaining)
+                onProgress(prog, remaining, nil)
             }
         )
         

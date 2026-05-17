@@ -23,6 +23,7 @@ struct ContentView: View {
         }
     }
 
+    @EnvironmentObject var lm: LanguageManager
     @State private var files: [MediaFile] = []
     
     @State private var isProcessing = false
@@ -31,9 +32,12 @@ struct ContentView: View {
     @State private var normalizeAudio = false // Default off to prevent noise
     @State private var fixJitter = false // Default off
     @State private var useHEVC = false // Default off
+    @State private var enableStabilize = false // Default off
+    @AppStorage("stabilizeSmoothing") private var stabilizeSmoothing: Double = 50.0
     @State private var keepOptions = false // Keep options on Clear All
     @State private var progress: Double = 0.0
     @State private var remainingTime: TimeInterval?
+    @State private var statusMessage: String? = nil
     @State private var outputFilename: String = ""
     @State private var errorLog: String?
     @State private var showErrorLog = false
@@ -45,7 +49,7 @@ struct ContentView: View {
         case uhd = 2160
         
         var id: Int { self.rawValue }
-        var description: String {
+        var rawDescription: String {
             switch self {
             case .original: return "Original (Fast)"
             case .fhd: return "1080p FHD"
@@ -54,56 +58,95 @@ struct ContentView: View {
         }
     }
     @State private var selectedResolution: Resolution = .original
+    @State private var mergeOutput = true
+    
+    private var appVersion: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
+        return "\(lm.localized("Version")) \(version)"
+    }
     
     var body: some View {
         VStack(spacing: 10) {
-            Text("MP4 Merger")
+            Text(lm.localized("MP4 Merger"))
                 .font(.largeTitle)
                 .fontWeight(.bold)
-                .padding(.top)
-            Text("Version 0.991")
+                .padding(.top, 30)
+            Text(appVersion)
                 .font(.footnote)
                 .foregroundColor(.secondary)
                 .padding(.bottom, 5)
             
             fileListSection
-                .frame(minHeight: 80, maxHeight: 220)
+                .frame(minHeight: 150, maxHeight: .infinity)
             
             // Settings Toolbar
             HStack {
                 Spacer()
                 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Options")
+                    Text(lm.localized("Options"))
                         .font(.headline)
                     
                     HStack {
-                        Text("Resolution:")
-                        Picker("Resolution", selection: $selectedResolution) {
+                        Text(lm.localized("Resolution:"))
+                        Picker("", selection: $selectedResolution) {
                             ForEach(Resolution.allCases) { res in
-                                Text(res.description).tag(res)
+                                Text(lm.localized(res.rawDescription)).tag(res)
                             }
                         }
                         .pickerStyle(.menu)
                         .frame(width: 150)
                     }
                     
-                    Toggle("Fix Jitter", isOn: $fixJitter)
+                    Toggle(lm.localized("Fix Jitter"), isOn: $fixJitter)
                         .toggleStyle(.checkbox)
-                        .onChange(of: fixJitter) { newValue in
+                        .onChange(of: fixJitter) {
                             updateOutputFilenameSuggestion()
                         }
                     
-                    Toggle("HEVC (High Compression)", isOn: $useHEVC)
+                    VStack(alignment: .leading, spacing: 5) {
+                        Toggle(lm.localized("Gimbal Stabilization"), isOn: $enableStabilize)
+                            .toggleStyle(.checkbox)
+                            .onChange(of: enableStabilize) {
+                                updateOutputFilenameSuggestion()
+                            }
+                        
+                        if enableStabilize {
+                            HStack {
+                                Text(lm.localized("Smoothing:"))
+                                    .font(.caption)
+                                Slider(value: $stabilizeSmoothing, in: 10...100, step: 1)
+                                    .frame(width: 100)
+                                TextField("", value: $stabilizeSmoothing, format: .number)
+                                    .textFieldStyle(.roundedBorder)
+                                    .frame(width: 50)
+                                    .font(.caption)
+                            }
+                            .padding(.leading, 20)
+                        }
+                    }
+                    
+                    Toggle(lm.localized("HEVC (High Compression)"), isOn: $useHEVC)
                         .toggleStyle(.checkbox)
-                        .onChange(of: useHEVC) { newValue in
+                        .onChange(of: useHEVC) {
                             updateOutputFilenameSuggestion()
                         }
                     
-                    Toggle("Normalize Audio", isOn: $normalizeAudio)
+                    Toggle(lm.localized("Normalize Audio"), isOn: $normalizeAudio)
                         .toggleStyle(.checkbox)
-                        .onChange(of: normalizeAudio) { newValue in
+                        .onChange(of: normalizeAudio) {
                              updateOutputFilenameSuggestion()
+                        }
+                    
+                    Divider()
+                        .padding(.vertical, 2)
+                    
+                    Toggle(lm.localized("Merge into single file"), isOn: $mergeOutput)
+                        .toggleStyle(.checkbox)
+                        .onChange(of: mergeOutput) {
+                             if mergeOutput && !files.isEmpty {
+                                 updateOutputFilenameSuggestion()
+                             }
                         }
                 }
                 .padding()
@@ -119,7 +162,7 @@ struct ContentView: View {
                     Text(error).foregroundColor(.red)
                     Spacer()
                     if let log = errorLog {
-                        Button("Show Log") { showErrorLog = true }
+                        Button(lm.localized("Show Log")) { showErrorLog = true }
                     }
                 }
                 .padding()
@@ -127,7 +170,7 @@ struct ContentView: View {
                 .cornerRadius(8)
                 .sheet(isPresented: $showErrorLog) {
                     ScrollView {
-                        Text(errorLog ?? "No log available")
+                        Text(errorLog ?? lm.localized("No log available"))
                             .font(.system(.caption, design: .monospaced))
                             .padding()
                     }
@@ -149,18 +192,21 @@ struct ContentView: View {
                 VStack(spacing: 5) {
                     ProgressView(value: progress)
                     HStack {
-                        if let remaining = remainingTime {
+                        if let msg = statusMessage {
+                            Text(msg)
+                                .fontWeight(.bold)
+                        } else if let remaining = remainingTime {
                             if remaining < 0 {
                                 if remaining == -2 {
-                                     Text("Processing... (Finalizing)")
+                                     Text(lm.localized("Processing... (Finalizing)"))
                                 } else {
-                                     Text("Calculating remaining time...")
+                                     Text(lm.localized("Calculating remaining time..."))
                                 }
                             } else {
-                                Text("Remaining: \(formatTime(remaining))")
+                                Text("\(lm.localized("Remaining:")) \(formatTime(remaining))")
                             }
                         } else {
-                            Text("Preparing...")
+                            Text(lm.localized("Preparing..."))
                         }
                         Spacer()
                         Text("\(Int(progress * 100))%")
@@ -172,12 +218,19 @@ struct ContentView: View {
             }
             
             HStack {
-                TextField("Output Filename", text: $outputFilename)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 200)
+                if mergeOutput {
+                    TextField(lm.localized("Output Filename"), text: $outputFilename)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 200)
+                } else {
+                    Text(lm.localized("Files will be saved in selected folder"))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .frame(width: 200, alignment: .leading)
+                }
                 
                 VStack(alignment: .leading, spacing: 5) {
-                    Button("Clear All") {
+                    Button(lm.localized("Clear All")) {
                         // Cancel any running task
                         currentTask?.cancel()
                         currentTask = nil
@@ -193,6 +246,7 @@ struct ContentView: View {
                         if !keepOptions {
                             normalizeAudio = false
                             fixJitter = false
+                            enableStabilize = false
                             useHEVC = false
                             selectedResolution = .original
                         }
@@ -200,13 +254,13 @@ struct ContentView: View {
                     }
                     .disabled(isProcessing || files.isEmpty)
                     
-                    Toggle("Keep Options", isOn: $keepOptions)
+                    Toggle(lm.localized("Keep Options"), isOn: $keepOptions)
                         .toggleStyle(.checkbox)
                         .font(.caption)
-                        .help("Clear Allを押したときに各種設定を保持します")
+                        .help(lm.localized("Keep Options Help"))
                 }
                 
-                Button("Sort by Name") {
+                Button(lm.localized("Sort by Name")) {
                     withAnimation {
                         files.sort { $0.url.lastPathComponent < $1.url.lastPathComponent }
                     }
@@ -215,15 +269,14 @@ struct ContentView: View {
                 
                 // ... (Rest of toolbar remains) ...
                 
-                Button("Merge Files") {
+                Button(mergeOutput ? lm.localized("Merge Files") : lm.localized("Process Files")) {
                     showSavePanel()
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(isProcessing || files.isEmpty)
             }
             .padding()
-            
-            Spacer()
+            .padding(.bottom, 20)
         }
     }
     
@@ -238,9 +291,9 @@ struct ContentView: View {
                 VStack {
                     Image(systemName: "arrow.down.doc")
                         .font(.system(size: 40))
-                    Text("Drag & Drop MP4 files here")
+                    Text(lm.localized("Drag & Drop MP4 files here"))
                         .font(.headline)
-                    Text("Files will be sorted by name")
+                    Text(lm.localized("Files will be sorted by name"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -292,7 +345,7 @@ struct ContentView: View {
             if file.isProcessed {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundColor(.green)
-                    .help("Successfully processed")
+                    .help(lm.localized("Successfully processed"))
             }
         }
     }
@@ -328,7 +381,11 @@ struct ContentView: View {
                    let data = item as? Data,
                    let url = URL(dataRepresentation: data, relativeTo: nil) {
                     
-                    if url.pathExtension.lowercased() == "mp4" || url.pathExtension.lowercased() == "mov" {
+                    let ext = url.pathExtension.lowercased()
+                    if ext == "lrf" {
+                        continue // Explicitly ignore .lrf files
+                    }
+                    if ext == "mp4" || ext == "mov" {
                         newURLs.append(url)
                     }
                 }
@@ -352,12 +409,20 @@ struct ContentView: View {
             
             await MainActor.run {
                 let isFirstLoad = files.isEmpty
+                let previousCount = files.count
                 
                 for file in newMediaFiles {
                     // Avoid checking URL duplication for now or use URL as ID
                     if !files.contains(where: { $0.url == file.url }) {
                         files.append(file)
                     }
+                }
+                
+                let newTotal = files.count
+                if previousCount <= 1 && newTotal > 1 {
+                    mergeOutput = true
+                } else if newTotal <= 1 {
+                    mergeOutput = false
                 }
                 
                 // Smart naming logic: run only on first load or if name is default
@@ -389,6 +454,7 @@ struct ContentView: View {
         var suffixes = ""
         
         if fixJitter { suffixes += "_fix" }
+        if enableStabilize { suffixes += "_stab" }
         if normalizeAudio { suffixes += "_norm" }
         
         switch selectedResolution {
@@ -413,20 +479,37 @@ struct ContentView: View {
     }
     
     private func showSavePanel() {
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.mpeg4Movie]
-        panel.nameFieldStringValue = outputFilename
-        panel.canCreateDirectories = true
-        panel.message = "merged.mp4 の保存先を選択してください"
-        
-        // Default to the first file's directory
-        if let firstFile = files.first {
-            panel.directoryURL = firstFile.url.deletingLastPathComponent()
-        }
-        
-        panel.begin { response in
-            if response == .OK, let url = panel.url {
-                startMerge(destination: url)
+        if mergeOutput {
+            let panel = NSSavePanel()
+            panel.allowedContentTypes = [.mpeg4Movie]
+            panel.nameFieldStringValue = outputFilename
+            panel.canCreateDirectories = true
+            panel.message = lm.localized("Save destination")
+            
+            if let firstFile = files.first {
+                panel.directoryURL = firstFile.url.deletingLastPathComponent()
+            }
+            
+            panel.begin { response in
+                if response == .OK, let url = panel.url {
+                    startMerge(destination: url)
+                }
+            }
+        } else {
+            let panel = NSOpenPanel()
+            panel.canChooseDirectories = true
+            panel.canChooseFiles = false
+            panel.canCreateDirectories = true
+            panel.message = lm.localized("Select destination folder")
+            
+            if let firstFile = files.first {
+                panel.directoryURL = firstFile.url.deletingLastPathComponent()
+            }
+            
+            panel.begin { response in
+                if response == .OK, let url = panel.url {
+                    startBatchProcess(destinationFolder: url)
+                }
             }
         }
     }
@@ -443,6 +526,8 @@ struct ContentView: View {
         let currentFiles = files.map { $0.url }
         let currentNormalize = normalizeAudio
         let currentFixJitter = fixJitter
+        let currentEnableStabilize = enableStabilize
+        let currentStabilizeSmoothing = Int(stabilizeSmoothing)
         let currentHEVC = useHEVC
         let targetH = selectedResolution == .original ? nil : selectedResolution.rawValue
         
@@ -454,19 +539,26 @@ struct ContentView: View {
                     fastMerge: false,
                     normalizeAudio: currentNormalize,
                     fixJitter: currentFixJitter,
+                    enableStabilize: currentEnableStabilize,
+                    stabilizeSmoothing: currentStabilizeSmoothing,
                     useHEVC: currentHEVC,
                     destinationURL: destination,
                     targetHeight: targetH
-                ) { prog, remaining in
+                ) { prog, remaining, status in
                     Task { @MainActor in
                         self.progress = prog
                         self.remainingTime = remaining
+                        if let st = status {
+                            self.statusMessage = st
+                        } else {
+                            self.statusMessage = nil
+                        }
                     }
                 }
                 
                 if !Task.isCancelled {
                     await MainActor.run {
-                        successMessage = "Merged successfully! Saved to: \(outputURL.path)"
+                        successMessage = "\(lm.localized("Merged successfully! Saved to:")) \(outputURL.path)"
                         isProcessing = false
                         progress = 1.0
                         remainingTime = 0
@@ -494,6 +586,128 @@ struct ContentView: View {
                         }
                         isProcessing = false
                     }
+                }
+            }
+        }
+    }
+    
+    private func startBatchProcess(destinationFolder: URL) {
+        guard !files.isEmpty else { return }
+        isProcessing = true
+        progress = 0.0
+        remainingTime = nil
+        resetMessages()
+        errorLog = nil
+        
+        let currentFiles = files
+        let currentNormalize = normalizeAudio
+        let currentFixJitter = fixJitter
+        let currentEnableStabilize = enableStabilize
+        let currentStabilizeSmoothing = Int(stabilizeSmoothing)
+        let currentHEVC = useHEVC
+        let targetH = selectedResolution == .original ? nil : selectedResolution.rawValue
+        
+        // Compute suffix locally
+        var suffixes = ""
+        if currentFixJitter { suffixes += "_fix" }
+        if currentEnableStabilize { suffixes += "_stab" }
+        if currentNormalize { suffixes += "_norm" }
+        switch selectedResolution {
+        case .fhd: suffixes += "_1080"
+        case .uhd: suffixes += "_4k"
+        default: break
+        }
+        let ext = currentHEVC ? "mov" : "mp4"
+        
+        currentTask = Task {
+            var completedCount = 0
+            let totalCount = currentFiles.count
+            let startTime = Date()
+            
+            for file in currentFiles {
+                if Task.isCancelled { break }
+                
+                let originalName = file.url.deletingPathExtension().lastPathComponent
+                
+                // Clean sequence number like in merge
+                var baseName = originalName
+                if let regex = try? NSRegularExpression(pattern: "[ _]\\d+$") {
+                    let range = NSRange(location: 0, length: originalName.utf16.count)
+                    let cleaned = regex.stringByReplacingMatches(in: originalName, options: [], range: range, withTemplate: "")
+                    if !cleaned.isEmpty { baseName = cleaned }
+                }
+                
+                let outputName = "\(baseName)\(suffixes).\(ext)"
+                var outputURL = destinationFolder.appendingPathComponent(outputName)
+                
+                // Prevent overwrite explicitly
+                var copyIndex = 1
+                while FileManager.default.fileExists(atPath: outputURL.path) && copyIndex < 100 {
+                     outputURL = destinationFolder.appendingPathComponent("\(baseName)\(suffixes)_\(copyIndex).\(ext)")
+                     copyIndex += 1
+                }
+                
+                await MainActor.run {
+                    self.statusMessage = lm.localizedDynamic("Processing file {0}/{1}...", args: ["\(completedCount + 1)", "\(totalCount)"])
+                }
+                
+                do {
+                    let runner = FFmpegRunner()
+                    _ = try await runner.merge(
+                        files: [file.url], // Process single file
+                        fastMerge: false,
+                        normalizeAudio: currentNormalize,
+                        fixJitter: currentFixJitter,
+                        enableStabilize: currentEnableStabilize,
+                        stabilizeSmoothing: currentStabilizeSmoothing,
+                        useHEVC: currentHEVC,
+                        destinationURL: outputURL,
+                        targetHeight: targetH
+                    ) { prog, _, _ in
+                        Task { @MainActor in
+                            let overallProg = (Double(completedCount) + prog) / Double(totalCount)
+                            self.progress = overallProg
+                            
+                            // Estimate remaining time based on overall progress
+                            if overallProg > 0.05 { // wait until 5% to estimate
+                                let elapsed = Date().timeIntervalSince(startTime)
+                                let estTotal = elapsed / overallProg
+                                self.remainingTime = estTotal - elapsed
+                            }
+                        }
+                    }
+                    completedCount += 1
+                    
+                    await MainActor.run {
+                        if let idx = self.files.firstIndex(where: { $0.id == file.id }) {
+                            self.files[idx].isProcessed = true
+                        }
+                    }
+                } catch {
+                    if !Task.isCancelled {
+                        await MainActor.run {
+                            self.errorMessage = error.localizedDescription
+                            if let ffmpegError = error as? FFmpegRunner.FFmpegError,
+                               case .commandFailed(let log) = ffmpegError {
+                                self.errorLog = log
+                            } else {
+                                self.errorLog = "\(error)"
+                            }
+                            self.isProcessing = false
+                        }
+                    }
+                    return // Stop on first error
+                }
+            }
+            
+            if !Task.isCancelled {
+                await MainActor.run {
+                    self.successMessage = "\(self.lm.localized("Batch processed successfully!")) \(destinationFolder.path)"
+                    self.isProcessing = false
+                    self.progress = 1.0
+                    self.remainingTime = 0
+                    self.statusMessage = nil
+                    NSWorkspace.shared.activateFileViewerSelecting([destinationFolder])
                 }
             }
         }
@@ -526,4 +740,3 @@ func readUserTags(from url: URL) -> [String] {
         return []
     }
 }
-
