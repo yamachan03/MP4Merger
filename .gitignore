@@ -1,0 +1,23 @@
+# Xcode & SwiftPM
+.build/
+.swiftpm/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+
+# macOS
+.DS_Store
+
+# Build Outputs & Artifacts
+MP4Merger.app/
+*.app.zip
+*.dmg
+
+# Video Files & Temps (Do not commit to Git)
+*.mp4
+*.mov
+*.trf
+concat_list.txt
+
+# FFmpeg Binary (Do not commit large binaries to Git due to size and license limits)
+ffmpeg
