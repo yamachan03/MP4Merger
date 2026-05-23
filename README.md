@@ -2,7 +2,8 @@
 
 **"Combine multiple videos into one, or batch-process them individually with consistent volume, stabilization, and resolution."**
 
-MP4 Merger is a simple and intuitive native macOS application designed to process video files seamlessly. Without complex editing software, you can align multiple clips into a single file or batch-process them one by one, with unified audio levels, gimbal stabilization, and your choice of output resolution.
+MP4 Merger is a simple and intuitive native macOS application designed to process video files seamlessly. Without complex editing software, you can align multiple clips into a single file or batch-process them one by one, with unified audio levels, gimbal stabilization, and your choice of output resolution. 
+*Highly optimized for Apple Silicon (M1/M2/M3) using native VideoToolbox hardware acceleration.*
 
 ---
 
@@ -14,6 +15,7 @@ MP4 Merger is a simple and intuitive native macOS application designed to proces
 * **Gimbal Stabilization:** Two-pass stabilization to smooth out camera movements and reduce shaky footage.
 * **Fix Jitter:** Reduces playback stutter and stabilizes video jitter for a smoother viewing experience.
 * **Native macOS Integration:**
+    * Hardware-accelerated processing via **Apple VideoToolbox** for incredibly fast export speeds.
     * Supports **HEVC (High Compression)** to save space while maintaining quality.
     * Modern Dark Mode interface.
 
@@ -62,6 +64,7 @@ This software uses code of **[FFmpeg](https://ffmpeg.org/)** licensed under the 
 **「複数の動画を一つに結合、または一括で個別処理。一定の音量、手ブレ補正、指定の解像度で綺麗に書き出し」**
 
 MP4 Mergerは、Macユーザーのために設計された直感的な動画処理ツールです。複雑な編集ソフトを使わずに、バラバラの動画ファイルを一本にまとめたり、複数ファイルに対して手ブレ補正や音量均一化を一括で適用することができます。
+*Apple Silicon (M1/M2/M3) の VideoToolbox ハードウェアアクセラレーションに極限まで最適化されています。*
 
 ---
 
@@ -73,6 +76,7 @@ MP4 Mergerは、Macユーザーのために設計された直感的な動画処�
 * **解像度の指定 (Resolution):** 出力サイズを **1080p FHD** や **4K UHD** に指定可能。
 * **映像のカクつき補正 (Fix Jitter):** 動画特有の微細なカクつき（ジッター）を抑え、スムーズな再生を実現します。
 * **Mac専用設計:**
+    * **Apple VideoToolbox** によるハードウェアアクセラレーションで、実時間の数倍に及ぶ超爆速エンコードを実現。
     * **HEVC (High Compression)** 対応で、画質を維持したままファイル容量を節約。
 
 ---

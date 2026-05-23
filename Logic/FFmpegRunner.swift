@@ -37,6 +37,15 @@ struct FFmpegRunner {
         // 2. Fallback to Homebrew path (for development)
         return "/opt/homebrew/bin/ffmpeg"
     }
+
+    private var ffprobePath: String {
+        // 1. Check for bundled ffprobe in Resources
+        if let bundledPath = Bundle.main.path(forResource: "ffprobe", ofType: nil) {
+            return bundledPath
+        }
+        // 2. Fallback to Homebrew path (for development)
+        return "/opt/homebrew/bin/ffprobe"
+    }
     
     // Apply Finder tags with retries and dual strategy (URL resource value + xattr fallback)
     private func applyFinderTags(_ tags: [String], to url: URL, retries: Int = 5) async {
@@ -151,7 +160,7 @@ struct FFmpegRunner {
     // Helper: Detect video codec
     private func getVideoCodec(for url: URL) async -> String? {
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: ffmpegPath)
+        process.executableURL = URL(fileURLWithPath: ffprobePath)
         process.arguments = [
             "-v", "error",
             "-select_streams", "v:0",
@@ -173,7 +182,101 @@ struct FFmpegRunner {
         }
     }
 
-    func merge(files: [URL], fastMerge: Bool, normalizeAudio: Bool, fixJitter: Bool, enableStabilize: Bool = false, stabilizeSmoothing: Int = 60, useHEVC: Bool, destinationURL: URL, targetHeight: Int?, metadata: [String: String]? = nil, finderTags: [String]? = nil, onProgress: @escaping (Double, TimeInterval, String?) -> Void) async throws -> URL {
+    func validateFiles(files: [URL], checkFormat: Bool, deepCheck: Bool) async throws -> Bool {
+        guard files.count > 0 else { return false }
+        
+        // Check FFprobe
+        guard FileManager.default.fileExists(atPath: ffprobePath) else {
+            throw FFmpegError.commandFailed("ffprobe binary not found. Validation requires ffprobe.")
+        }
+        
+        var needsReencode = false
+        
+        // 1. Fast Check: Format consistency (only if multiple files)
+        if checkFormat && files.count > 1 {
+            var firstInfo: String?
+            for file in files {
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: ffprobePath)
+                process.arguments = [
+                    "-v", "error",
+                    "-show_entries", "stream=codec_name,profile,width,height,r_frame_rate,time_base,sample_rate,channels",
+                    "-of", "csv=p=0",
+                    file.path
+                ]
+                let pipe = Pipe()
+                process.standardOutput = pipe
+                do {
+                    try process.run()
+                    process.waitUntilExit()
+                    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                    let info = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+                    
+                    if process.terminationStatus != 0 {
+                        throw FFmpegError.commandFailed("ffprobe exited with code \(process.terminationStatus) at \(ffprobePath). File: \(file.lastPathComponent)")
+                    }
+                    if info == nil || info!.isEmpty {
+                        throw FFmpegError.commandFailed("ffprobe returned empty output at \(ffprobePath). File: \(file.lastPathComponent)")
+                    }
+                    
+                    if let first = firstInfo {
+                        if first != info {
+                            print("Format mismatch: \(first) vs \(info ?? "nil")")
+                            needsReencode = true
+                            break
+                        }
+                    } else {
+                        firstInfo = info
+                    }
+                } catch let err as FFmpegError {
+                    throw err
+                } catch {
+                     throw FFmpegError.commandFailed("ffprobe format check failed for \(file.lastPathComponent): \(error.localizedDescription)")
+                }
+            }
+        }
+        
+        // 2. Deep Check: File integrity
+        if deepCheck {
+            guard FileManager.default.fileExists(atPath: ffmpegPath) else {
+                throw FFmpegError.ffmpegNotFound
+            }
+            
+            for file in files {
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: ffmpegPath)
+                process.arguments = [
+                    "-v", "error",
+                    "-i", file.path,
+                    "-f", "null",
+                    "-c", "copy",
+                    "-"
+                ]
+                let pipe = Pipe()
+                process.standardError = pipe
+                
+                do {
+                    try process.run()
+                    process.waitUntilExit()
+                    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                    let msg = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                    
+                    // ffmpeg will print errors to stderr
+                    if process.terminationStatus != 0 || msg.lowercased().contains("error") || msg.lowercased().contains("invalid") {
+                         throw FFmpegError.commandFailed(LanguageManager.shared.localizedDynamic("File integrity error detected in {0}:\n{1}", args: [file.lastPathComponent, msg]))
+                    }
+                } catch let error as FFmpegError {
+                    throw error
+                } catch {
+                     throw FFmpegError.commandFailed("Deep check execution failed for \(file.lastPathComponent)")
+                }
+            }
+        }
+        
+        return needsReencode
+    }
+
+    func merge(files: [URL], fastMerge: Bool, requiresReencode: Bool, normalizeAudio: Bool, fixJitter: Bool, enableStabilize: Bool = false, stabilizeSmoothing: Int = 60, useHEVC: Bool, destinationURL: URL, targetHeight: Int?, metadata: [String: String]? = nil, finderTags: [String]? = nil, onReencodeForced: @escaping () async throws -> Bool = { false }, onProgress: @escaping (Double, TimeInterval, String?) -> Void) async throws -> URL {
         let fileManager = FileManager.default
         let tempDir = fileManager.temporaryDirectory
         
@@ -231,11 +334,11 @@ struct FFmpegRunner {
                 }
                 
                 // Pass 2: vidstabtransform
+                let vCodec = useHEVC ? "hevc_videotoolbox" : "h264_videotoolbox"
                 let pass2Args = [
-                    "-hwaccel", "videotoolbox",
                     "-i", file.path,
                     "-vf", "vidstabtransform=input=\(trfURL.path):smoothing=\(stabilizeSmoothing):crop=black:optzoom=1",
-                    "-c:v", "h264_videotoolbox", "-b:v", "20M", // High bitrate to preserve quality
+                    "-c:v", vCodec, "-b:v", "20M", // High bitrate to preserve quality
                     "-c:a", "copy",
                     "-y", stabURL.path
                 ]
@@ -261,9 +364,24 @@ struct FFmpegRunner {
             }
         }
         
+        var finalUseHEVC = useHEVC
+        if requiresReencode && !useHEVC {
+            finalUseHEVC = try await onReencodeForced()
+        }
+        
         // Determine Mode
-        let filtersActive = normalizeAudio || fixJitter || targetHeight != nil || useHEVC
-        let effectiveFastMerge = fastMerge || !filtersActive
+        let filtersActive = normalizeAudio || fixJitter || targetHeight != nil || finalUseHEVC
+        let effectiveFastMerge = (fastMerge || !filtersActive) && !requiresReencode
+
+        let modeMsg: String
+        if enableStabilize || filtersActive {
+            modeMsg = LanguageManager.shared.localizedDynamic("Mode: Filter / Re-encode", args: [])
+        } else if requiresReencode {
+            modeMsg = LanguageManager.shared.localizedDynamic("Mode: Smart Re-encode (Format Mismatch)", args: [])
+        } else {
+            modeMsg = LanguageManager.shared.localizedDynamic("Mode: Fast Merge (Direct Copy)", args: [])
+        }
+        onProgress(0, -1, modeMsg)
 
         // Shared progress state
         let startTime = Date()
@@ -316,6 +434,7 @@ struct FFmpegRunner {
         // This fixes container timestamp issues (6h bug) without encoding (60min wait).
         if !success && effectiveFastMerge {
             print("🔄 Attempting Tier 2 (Rewrap via TS)...")
+            onProgress(0, -1, LanguageManager.shared.localizedDynamic("Fast merge failed. Attempting Rewrap (Tier 2)...", args: []))
             
             // 1. Check Codec
             let firstCodec = await getVideoCodec(for: workingFiles.first!)
@@ -326,7 +445,6 @@ struct FFmpegRunner {
             
             var tsFiles: [URL] = []
             var accumulated: Double = 0
-            var rewrapFailed = false
             
             do {
                 // Convert each to TS
@@ -334,9 +452,11 @@ struct FFmpegRunner {
                     let tsURL = tempDir.appendingPathComponent("part_\(UUID()).ts")
                     tsFiles.append(tsURL)
                     
-                    var args = ["-i", file.path, "-c", "copy", "-bsf:v", bsf ?? "null", "-f", "mpegts", "-y", tsURL.path]
-                    // remove null bsf if nil
-                    if bsf == nil { args.remove(at: 4); args.remove(at: 4) }
+                    var args = ["-i", file.path, "-c", "copy"]
+                    if let bsf = bsf {
+                        args.append(contentsOf: ["-bsf:v", bsf])
+                    }
+                    args.append(contentsOf: ["-f", "mpegts", "-y", tsURL.path])
                     
                     try await runFFmpeg(arguments: args, totalDuration: totalDuration, offsetDuration: accumulated, startTime: startTime) { prog, rem in onProgress(prog, rem, nil) }
                     accumulated += fileDurations[idx]
@@ -383,70 +503,125 @@ struct FFmpegRunner {
         // RESET TIMER for Tier 3
         let tier3StartTime = Date()
         
-        var args: [String] = []
-        var filterComplex = ""
-        
-        // 1. Inputs
-        for file in workingFiles {
-            // Enable Hardware Decoding
-            args.append(contentsOf: ["-hwaccel", "videotoolbox", "-i", file.path])
-        }
-        
-        // 2. Filter Construction
-        for i in 0..<workingFiles.count {
-            // Video
-            var vOps = "fps=30,format=yuv420p"
-            if fixJitter { vOps += ",yadif=0:-1:0" }
-            if let height = targetHeight { vOps += ",scale=-2:\(height):flags=lanczos" }
-            filterComplex += "[\(i):v]\(vOps)[v\(i)];"
-            
-            // Audio
-            var aOps = "aresample=48000"
-            if normalizeAudio { aOps += ",loudnorm=I=-16:TP=-1.5:LRA=11" }
-            filterComplex += "[\(i):a]\(aOps)[a\(i)];"
-        }
-        
-        // Concat Command
-        for i in 0..<workingFiles.count {
-            filterComplex += "[v\(i)][a\(i)]"
-        }
-        filterComplex += "concat=n=\(workingFiles.count):v=1:a=1[outv][outa]"
-        
-        args.append(contentsOf: ["-filter_complex", filterComplex])
-        args.append(contentsOf: ["-map", "[outv]", "-map", "[outa]"])
-        
-        // 3. Encoder Settings
-        if useHEVC {
-             args.append(contentsOf: [
-                "-c:v", "hevc_videotoolbox", "-tag:v", "hvc1", "-allow_sw", "1",
-                "-b:v", "8M", "-maxrate", "12M", "-bufsize", "16M", "-profile:v", "main"
-             ])
+        if effectiveFastMerge {
+            onProgress(0, -1, LanguageManager.shared.localizedDynamic("Fast merge failed. Re-encoding completely (This may take a while)...", args: []))
         } else {
-             args.append(contentsOf: [
-                "-c:v", "h264_videotoolbox", "-allow_sw", "1",
-                "-b:v", "12M", "-maxrate", "16M", "-bufsize", "20M", "-profile:v", "high"
-             ])
+            onProgress(0, -1, LanguageManager.shared.localizedDynamic("Processing with Re-encoding (This may take a while)...", args: []))
         }
-        args.append(contentsOf: ["-c:a", "aac", "-b:a", "192k"])
         
-        // Optimize
-        args.append(contentsOf: ["-movflags", "+faststart", "-y", outputURL.path])
+        // Prompt for HEVC if we fell back from a fast merge attempt and aren't already using it
+        if effectiveFastMerge && !finalUseHEVC {
+            finalUseHEVC = try await onReencodeForced()
+        }
         
-        // Run (Use tier3StartTime)
-        try await runFFmpeg(
-            arguments: args,
-            totalDuration: totalDuration,
-            offsetDuration: 0,
-            startTime: tier3StartTime,
-            onProgress: { prog, remaining in
-                onProgress(prog, remaining, nil)
+        var finalOutputURL = outputURL
+        if finalUseHEVC && finalOutputURL.pathExtension.lowercased() != "mov" {
+            finalOutputURL = finalOutputURL.deletingPathExtension().appendingPathExtension("mov")
+        }
+        
+        // NEW TIER 3 LOGIC: Sequential Smart Re-encode + Fast Concat
+        var tempSegments: [URL] = []
+        defer {
+            for url in tempSegments {
+                try? fileManager.removeItem(at: url)
             }
-        )
+        }
+        
+        var completedDuration: Double = 0
+        let totalCount = workingFiles.count
+        
+        for (index, file) in workingFiles.enumerated() {
+            let tempSegmentURL = tempDir.appendingPathComponent("segment_\(index)_\(UUID()).mov")
+            var segArgs: [String] = []
+            
+            // Determine if CPU-intensive filters are needed
+            let needsCpuFilters = fixJitter || (targetHeight != nil)
+            
+            // Use hardware decode only when no CPU-side pixel filters are active.
+            // yadif and scale require frames in CPU memory; format=nv12 alone does not block hwaccel.
+            if !needsCpuFilters {
+                segArgs.append(contentsOf: [
+                    "-hwaccel", "videotoolbox",
+                    "-hwaccel_output_format", "nv12"
+                ])
+            }
+            
+            segArgs.append(contentsOf: ["-i", file.path])
+            
+            // Video Filters — only add what's actually needed
+            var vFilters: [String] = []
+            if fixJitter { vFilters.append("yadif=0:-1:0") }
+            if let height = targetHeight { vFilters.append("scale=-2:\(height):flags=lanczos") }
+            vFilters.append("format=nv12")
+            segArgs.append(contentsOf: ["-vf", vFilters.joined(separator: ",")])
+            
+            // Audio Filters
+            var aFilters = ["aresample=48000"]
+            if normalizeAudio { aFilters.append("loudnorm=I=-16:TP=-1.5:LRA=11") }
+            segArgs.append(contentsOf: ["-af", aFilters.joined(separator: ",")])
+            
+            // Encoder Settings
+            if finalUseHEVC {
+                 segArgs.append(contentsOf: [
+                    "-c:v", "hevc_videotoolbox", "-tag:v", "hvc1",
+                    "-b:v", "8M", "-profile:v", "main"
+                 ])
+            } else {
+                 segArgs.append(contentsOf: [
+                    "-c:v", "h264_videotoolbox",
+                    "-b:v", "12M", "-profile:v", "high"
+                 ])
+            }
+            segArgs.append(contentsOf: ["-c:a", "aac", "-b:a", "192k", "-y", tempSegmentURL.path])
+            
+            let segmentDuration = fileDurations[index]
+            
+            try await runFFmpeg(
+                arguments: segArgs,
+                totalDuration: totalDuration,
+                offsetDuration: completedDuration,
+                startTime: tier3StartTime,
+                onProgress: { prog, remaining in
+                    // Override status message to show segment progress
+                    onProgress(prog, remaining, LanguageManager.shared.localizedDynamic("Processing Segment {0}/{1}", args: ["\(index + 1)", "\(totalCount)"]))
+                }
+            )
+            
+            tempSegments.append(tempSegmentURL)
+            completedDuration += segmentDuration
+        }
+        
+        // Final Concat Step
+        onProgress(1.0, -2, LanguageManager.shared.localizedDynamic("Finalizing (Merging Segments)...", args: []))
+        let concatListURL = tempDir.appendingPathComponent("tier3_concat_\(UUID()).txt")
+        var concatContent = ""
+        for url in tempSegments {
+            concatContent += "file '\(url.path)'\n"
+        }
+        try concatContent.write(to: concatListURL, atomically: true, encoding: .utf8)
+        defer { try? fileManager.removeItem(at: concatListURL) }
+        
+        let concatArgs = [
+            "-f", "concat",
+            "-safe", "0",
+            "-i", concatListURL.path,
+            "-c", "copy",
+            "-movflags", "+faststart",
+            "-y", finalOutputURL.path
+        ]
+        
+        try await runFFmpeg(arguments: concatArgs, totalDuration: totalDuration, offsetDuration: totalDuration - 1, startTime: tier3StartTime) { _, _ in }
         
         // Verify Robust Path too
-        try await verifyOutput(outputURL, expectedDuration: totalDuration, tolerance: 10.0) // 10s tolerance for recheck
+        try await verifyOutput(finalOutputURL, expectedDuration: totalDuration, tolerance: 10.0) // 10s tolerance for recheck
         
-        return outputURL
+        try? fileManager.setAttributes([.posixPermissions: 0o644], ofItemAtPath: finalOutputURL.path)
+        if let finderTags = finderTags, !finderTags.isEmpty {
+             try? await Task.sleep(nanoseconds: 200_000_000)
+             await self.applyFinderTags(finderTags, to: finalOutputURL)
+        }
+        
+        return finalOutputURL
     }
 
     // Helper: Run generic ffmpeg command and parse progress
@@ -630,7 +805,7 @@ struct FFmpegRunner {
                     var remaining: TimeInterval = -1
                     
                     // Improved Estimation Logic:
-                    if percentage > 0.05 || elapsedTime > 10 {
+                    if elapsedTime > 5 {
                         let rate = actualTotalProcessed / elapsedTime
                         if rate > 0.0001 {
                             // If we overrun total duration, current > total.

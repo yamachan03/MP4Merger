@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+
 enum AppLanguage: String, CaseIterable, Identifiable {
     case english = "en"
     case japanese = "ja"
@@ -69,7 +70,24 @@ class LanguageManager: ObservableObject {
         "Select destination folder": [.english: "Select destination folder", .japanese: "保存先のフォルダを選択してください"],
         "Files will be saved in selected folder": [.english: "Files will be saved with suffixes", .japanese: "ファイルごとにサフィックスが付与されます"],
         "Batch processed successfully!": [.english: "Batch processed successfully! Saved to:", .japanese: "一括処理が完了しました！ 保存先:"],
-        "Processing file {0}/{1}...": [.english: "Processing file {0}/{1}...", .japanese: "ファイル処理中 {0}/{1}..."]
+        "Processing file {0}/{1}...": [.english: "Processing file {0}/{1}...", .japanese: "ファイル処理中 {0}/{1}..."],
+        
+        // --- 新機能用に追加 ---
+        "Run Deep Validation": [.english: "Run Deep Validation", .japanese: "詳細検証を実行（ディープチェック）"],
+        "Check files for corruption before processing. This may take some time.": [.english: "Check files for corruption before processing. This may take some time.", .japanese: "処理前にファイルが破損していないかチェックします。この処理には時間がかかる場合があります。"],
+        "Validating files...": [.english: "Validating files...", .japanese: "ファイルを検証中..."],
+        "Format mismatch detected between {0} and {1}. Fast merge may fail or produce corrupt output.": [.english: "Format mismatch detected between {0} and {1}. Fast merge may fail or produce corrupt output.", .japanese: "{0} と {1} の間でフォーマットの不一致が検出されました。高速結合が失敗するか、映像が乱れる可能性があります。"],
+        "File integrity error detected in {0}:\n{1}": [.english: "File integrity error detected in {0}:\n{1}", .japanese: "{0} のファイル内に破損エラーを検出しました:\n{1}"],
+        "Fast merge failed. Attempting Rewrap (Tier 2)...": [.english: "Fast merge failed. Attempting Rewrap (Tier 2)...", .japanese: "高速結合に失敗しました。再パッキング（Tier 2）でやり直しています..."],
+        "Merge failed. Re-encoding completely (This may take a while)...": [.english: "Merge failed. Re-encoding completely (This may take a while)...", .japanese: "結合に失敗しました。全体を再エンコードしてやり直しています（時間がかかります）..."],
+        
+        // --- モード表示用に追加 ---
+        "Mode: Filter / Re-encode": [.english: "Mode: Filter / Re-encode", .japanese: "モード: フィルター適用（再エンコード）"],
+        "Mode: Smart Re-encode (Format Mismatch)": [.english: "Mode: Smart Re-encode (Format Mismatch)", .japanese: "モード: 自動再エンコード（形式不一致のため）"],
+        "Mode: Fast Merge (Direct Copy)": [.english: "Mode: Fast Merge (Direct Copy)", .japanese: "モード: 超高速結合（再エンコードなし）"],
+        
+        "Fast merge failed. Re-encoding completely (This may take a while)...": [.english: "Fast merge failed. Re-encoding completely (This may take a while)...", .japanese: "高速結合に失敗しました。全体を再エンコードしてやり直しています (時間がかかります)..."],
+        "Processing with Re-encoding (This may take a while)...": [.english: "Processing with Re-encoding (This may take a while)...", .japanese: "再エンコード処理を行っています（時間がかかります）..."]
     ]
     
     func localized(_ key: String) -> String {

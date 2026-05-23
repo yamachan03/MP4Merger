@@ -8,6 +8,7 @@ struct ContentView: View {
         let url: URL
         let duration: Double
         let size: Int64
+        var tags: [String]?
         var isProcessed: Bool = false
         
         var formattedDuration: String {
@@ -35,6 +36,7 @@ struct ContentView: View {
     @State private var enableStabilize = false // Default off
     @AppStorage("stabilizeSmoothing") private var stabilizeSmoothing: Double = 50.0
     @State private var keepOptions = false // Keep options on Clear All
+    @State private var enableDeepValidation = false // Deep integrity check
     @State private var progress: Double = 0.0
     @State private var remainingTime: TimeInterval?
     @State private var statusMessage: String? = nil
@@ -138,6 +140,10 @@ struct ContentView: View {
                              updateOutputFilenameSuggestion()
                         }
                     
+                    Toggle(lm.localized("Run Deep Validation"), isOn: $enableDeepValidation)
+                        .toggleStyle(.checkbox)
+                        .help(lm.localized("Check files for corruption before processing. This may take some time."))
+                    
                     Divider()
                         .padding(.vertical, 2)
                     
@@ -189,13 +195,16 @@ struct ContentView: View {
             }
             
             if isProcessing {
-                VStack(spacing: 5) {
+                VStack(alignment: .leading, spacing: 5) {
+                    if let msg = statusMessage {
+                        Text(msg)
+                            .font(.caption)
+                            .fontWeight(.bold)
+                            .foregroundColor(.orange)
+                    }
                     ProgressView(value: progress)
                     HStack {
-                        if let msg = statusMessage {
-                            Text(msg)
-                                .fontWeight(.bold)
-                        } else if let remaining = remainingTime {
+                        if let remaining = remainingTime {
                             if remaining < 0 {
                                 if remaining == -2 {
                                      Text(lm.localized("Processing... (Finalizing)"))
@@ -248,11 +257,12 @@ struct ContentView: View {
                             fixJitter = false
                             enableStabilize = false
                             useHEVC = false
+                            enableDeepValidation = false
                             selectedResolution = .original
                         }
                         outputFilename = ""
                     }
-                    .disabled(isProcessing || files.isEmpty)
+                    .disabled(files.isEmpty)
                     
                     Toggle(lm.localized("Keep Options"), isOn: $keepOptions)
                         .toggleStyle(.checkbox)
@@ -266,8 +276,6 @@ struct ContentView: View {
                     }
                 }
                 .disabled(isProcessing || files.count < 2)
-                
-                // ... (Rest of toolbar remains) ...
                 
                 Button(mergeOutput ? lm.localized("Merge Files") : lm.localized("Process Files")) {
                     showSavePanel()
@@ -337,6 +345,22 @@ struct ContentView: View {
                     Text(file.formattedDuration)
                         .font(.caption2)
                         .foregroundColor(.secondary)
+                    
+                    if let tags = file.tags, !tags.isEmpty {
+                        Text("•")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        HStack(spacing: 4) {
+                            ForEach(tags, id: \.self) { tag in
+                                Text(tag)
+                                    .font(.system(size: 9))
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 2)
+                                    .background(Color.accentColor.opacity(0.2))
+                                    .cornerRadius(4)
+                            }
+                        }
+                    }
                 }
             }
             
@@ -370,8 +394,6 @@ struct ContentView: View {
         successMessage = nil
     }
     
-    // ... (resetMessages remains) ...
-    
     private func loadFiles(from providers: [NSItemProvider]) {
         resetMessages()
         Task {
@@ -398,13 +420,11 @@ struct ContentView: View {
             for url in newURLs {
                 let asset = AVURLAsset(url: url)
                 let duration = (try? await asset.load(.duration))?.seconds ?? 0
-                let resources = try? url.resourceValues(forKeys: [.fileSizeKey])
+                let resources = try? url.resourceValues(forKeys: [.fileSizeKey, .tagNamesKey])
                 let size = Int64(resources?.fileSize ?? 0)
+                let tags = resources?.tagNames
                 
-                let tags = readUserTags(from: url)
-                print("🚀 テスト読み取り結果: \(url.lastPathComponent) のタグ = \(tags)")
-                
-                newMediaFiles.append(MediaFile(url: url, duration: duration, size: size))
+                newMediaFiles.append(MediaFile(url: url, duration: duration, size: size, tags: tags))
             }
             
             await MainActor.run {
@@ -441,7 +461,6 @@ struct ContentView: View {
         let isSingleFile = files.count == 1
         
         // 1. If multiple files, clean sequence number from first filename to make a generic base name
-        // E.g. "Movie_1.mp4" -> "Movie.mp4" (roughly)
         if !isSingleFile {
             if let regex = try? NSRegularExpression(pattern: "[ _]\\d+$") {
                 let range = NSRange(location: 0, length: originalName.utf16.count)
@@ -481,7 +500,7 @@ struct ContentView: View {
     private func showSavePanel() {
         if mergeOutput {
             let panel = NSSavePanel()
-            panel.allowedContentTypes = [.mpeg4Movie]
+            panel.allowedContentTypes = [.mpeg4Movie, .quickTimeMovie]
             panel.nameFieldStringValue = outputFilename
             panel.canCreateDirectories = true
             panel.message = lm.localized("Save destination")
@@ -522,7 +541,6 @@ struct ContentView: View {
         resetMessages()
         errorLog = nil
         
-        // Capture state for the task
         let currentFiles = files.map { $0.url }
         let currentNormalize = normalizeAudio
         let currentFixJitter = fixJitter
@@ -530,28 +548,38 @@ struct ContentView: View {
         let currentStabilizeSmoothing = Int(stabilizeSmoothing)
         let currentHEVC = useHEVC
         let targetH = selectedResolution == .original ? nil : selectedResolution.rawValue
+        let currentDeepValidation = enableDeepValidation
         
         currentTask = Task {
             do {
                 let runner = FFmpegRunner()
+                
+                await MainActor.run {
+                    self.statusMessage = lm.localized("Validating files...")
+                }
+                let requiresReencode = try await runner.validateFiles(files: currentFiles, checkFormat: true, deepCheck: currentDeepValidation)
+                
                 let outputURL = try await runner.merge(
                     files: currentFiles,
                     fastMerge: false,
+                    requiresReencode: requiresReencode,
                     normalizeAudio: currentNormalize,
                     fixJitter: currentFixJitter,
                     enableStabilize: currentEnableStabilize,
                     stabilizeSmoothing: currentStabilizeSmoothing,
                     useHEVC: currentHEVC,
                     destinationURL: destination,
-                    targetHeight: targetH
+                    targetHeight: targetH,
+                    onReencodeForced: {
+                        return false
+                    }
                 ) { prog, remaining, status in
                     Task { @MainActor in
                         self.progress = prog
                         self.remainingTime = remaining
                         if let st = status {
-                            self.statusMessage = st
-                        } else {
-                            self.statusMessage = nil
+                            if st.isEmpty { self.statusMessage = nil }
+                            else { self.statusMessage = st }
                         }
                     }
                 }
@@ -606,6 +634,7 @@ struct ContentView: View {
         let currentStabilizeSmoothing = Int(stabilizeSmoothing)
         let currentHEVC = useHEVC
         let targetH = selectedResolution == .original ? nil : selectedResolution.rawValue
+        let currentDeepValidation = enableDeepValidation
         
         // Compute suffix locally
         var suffixes = ""
@@ -623,6 +652,28 @@ struct ContentView: View {
             var completedCount = 0
             let totalCount = currentFiles.count
             let startTime = Date()
+            
+            await MainActor.run {
+                self.statusMessage = lm.localized("Validating files...")
+            }
+            do {
+                let runner = FFmpegRunner()
+                _ = try await runner.validateFiles(files: currentFiles.map { $0.url }, checkFormat: false, deepCheck: currentDeepValidation)
+            } catch {
+                if !Task.isCancelled {
+                    await MainActor.run {
+                        self.errorMessage = error.localizedDescription
+                        if let ffmpegError = error as? FFmpegRunner.FFmpegError,
+                           case .commandFailed(let log) = ffmpegError {
+                            self.errorLog = log
+                        } else {
+                            self.errorLog = "\(error)"
+                        }
+                        self.isProcessing = false
+                    }
+                }
+                return
+            }
             
             for file in currentFiles {
                 if Task.isCancelled { break }
@@ -656,6 +707,7 @@ struct ContentView: View {
                     _ = try await runner.merge(
                         files: [file.url], // Process single file
                         fastMerge: false,
+                        requiresReencode: false,
                         normalizeAudio: currentNormalize,
                         fixJitter: currentFixJitter,
                         enableStabilize: currentEnableStabilize,
@@ -663,7 +715,7 @@ struct ContentView: View {
                         useHEVC: currentHEVC,
                         destinationURL: outputURL,
                         targetHeight: targetH
-                    ) { prog, _, _ in
+                    ) { prog, _, status in
                         Task { @MainActor in
                             let overallProg = (Double(completedCount) + prog) / Double(totalCount)
                             self.progress = overallProg
@@ -673,6 +725,15 @@ struct ContentView: View {
                                 let elapsed = Date().timeIntervalSince(startTime)
                                 let estTotal = elapsed / overallProg
                                 self.remainingTime = estTotal - elapsed
+                            }
+                            
+                            if let st = status {
+                                let baseMsg = self.lm.localizedDynamic("Processing file {0}/{1}...", args: ["\(completedCount + 1)", "\(totalCount)"])
+                                if st.isEmpty {
+                                    self.statusMessage = baseMsg
+                                } else {
+                                    self.statusMessage = "\(baseMsg) - \(st)"
+                                }
                             }
                         }
                     }
