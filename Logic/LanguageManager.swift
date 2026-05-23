@@ -87,7 +87,9 @@ class LanguageManager: ObservableObject {
         "Mode: Fast Merge (Direct Copy)": [.english: "Mode: Fast Merge (Direct Copy)", .japanese: "モード: 超高速結合（再エンコードなし）"],
         
         "Fast merge failed. Re-encoding completely (This may take a while)...": [.english: "Fast merge failed. Re-encoding completely (This may take a while)...", .japanese: "高速結合に失敗しました。全体を再エンコードしてやり直しています (時間がかかります)..."],
-        "Processing with Re-encoding (This may take a while)...": [.english: "Processing with Re-encoding (This may take a while)...", .japanese: "再エンコード処理を行っています（時間がかかります）..."]
+        "Processing with Re-encoding (This may take a while)...": [.english: "Processing with Re-encoding (This may take a while)...", .japanese: "再エンコード処理を行っています（時間がかかります）..."],
+        "Processing Segment {0}/{1}": [.english: "Processing Segment {0}/{1}", .japanese: "セグメントエンコード中 {0}/{1}"],
+        "Finalizing (Merging Segments)...": [.english: "Finalizing (Merging Segments)...", .japanese: "最終処理中（セグメント結合）..."]
     ]
     
     func localized(_ key: String) -> String {

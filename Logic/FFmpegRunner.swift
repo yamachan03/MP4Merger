@@ -572,6 +572,11 @@ struct FFmpegRunner {
                     "-b:v", "12M", "-profile:v", "high"
                  ])
             }
+            
+            // Force 30fps and 90k timebase to prevent concat demuxer PTS scaling bugs
+            segArgs.append(contentsOf: ["-r", "30", "-video_track_timescale", "90000"])
+            // Cap output to AVAsset-measured duration to prevent edit list expansion (2x duration bug)
+            segArgs.append(contentsOf: ["-t", String(fileDurations[index])])
             segArgs.append(contentsOf: ["-c:a", "aac", "-b:a", "192k", "-y", tempSegmentURL.path])
             
             let segmentDuration = fileDurations[index]
