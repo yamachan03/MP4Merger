@@ -559,6 +559,8 @@ struct ContentView: View {
                 }
                 let requiresReencode = try await runner.validateFiles(files: currentFiles, checkFormat: true, deepCheck: currentDeepValidation)
                 
+                let uniqueTags = Array(Set(files.compactMap { $0.tags }.flatMap { $0 }))
+                
                 let outputURL = try await runner.merge(
                     files: currentFiles,
                     fastMerge: false,
@@ -570,6 +572,7 @@ struct ContentView: View {
                     useHEVC: currentHEVC,
                     destinationURL: destination,
                     targetHeight: targetH,
+                    finderTags: uniqueTags.isEmpty ? nil : uniqueTags,
                     onReencodeForced: {
                         return false
                     }
@@ -714,7 +717,8 @@ struct ContentView: View {
                         stabilizeSmoothing: currentStabilizeSmoothing,
                         useHEVC: currentHEVC,
                         destinationURL: outputURL,
-                        targetHeight: targetH
+                        targetHeight: targetH,
+                        finderTags: file.tags
                     ) { prog, _, status in
                         Task { @MainActor in
                             let overallProg = (Double(completedCount) + prog) / Double(totalCount)
