@@ -89,7 +89,17 @@ class LanguageManager: ObservableObject {
         "Fast merge failed. Re-encoding completely (This may take a while)...": [.english: "Fast merge failed. Re-encoding completely (This may take a while)...", .japanese: "高速結合に失敗しました。全体を再エンコードしてやり直しています (時間がかかります)..."],
         "Processing with Re-encoding (This may take a while)...": [.english: "Processing with Re-encoding (This may take a while)...", .japanese: "再エンコード処理を行っています（時間がかかります）..."],
         "Processing Segment {0}/{1}": [.english: "Processing Segment {0}/{1}", .japanese: "セグメントエンコード中 {0}/{1}"],
-        "Finalizing (Merging Segments)...": [.english: "Finalizing (Merging Segments)...", .japanese: "最終処理中（セグメント結合）..."]
+        "Finalizing (Merging Segments)...": [.english: "Finalizing (Merging Segments)...", .japanese: "最終処理中（セグメント結合）..."],
+        
+        // --- 事前確認ポップアップ用に追加 ---
+        "Warn on Slow Process": [.english: "Warn on Slow Process", .japanese: "時間がかかる場合は事前に確認する"],
+        "Warn on Slow Process Help": [.english: "Shows a warning if fast merge is not possible", .japanese: "再エンコードが必要で処理に時間がかかる場合に事前に確認ポップアップを表示します"],
+        "Processing Time Warning": [.english: "Processing Time Warning", .japanese: "処理時間に関する確認"],
+        "This process will take a significant amount of time. Do you want to proceed?": [.english: "This process will take a significant amount of time. Do you want to proceed?", .japanese: "この処理は完了までにかなりの時間がかかります。処理を続行してもよろしいですか？"],
+        "Reason: Filters are active": [.english: "Reason: Filters or resolution changes are active, requiring re-encoding.", .japanese: "理由：フィルター（音量均一化、手ブレ補正など）や解像度の変更が有効になっているため、再エンコードが必要です。"],
+        "Reason: Format Mismatch": [.english: "Reason: The input files have different formats or properties, requiring re-encoding.", .japanese: "理由：入力ファイルのフォーマットやプロパティが異なるため、結合のための再エンコードが必要です。"],
+        "Proceed": [.english: "Proceed", .japanese: "処理を進める"],
+        "Cancel Processing": [.english: "Cancel", .japanese: "作業をやめる"]
     ]
     
     func localized(_ key: String) -> String {

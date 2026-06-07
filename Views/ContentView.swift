@@ -36,6 +36,7 @@ struct ContentView: View {
     @State private var enableStabilize = false // Default off
     @AppStorage("stabilizeSmoothing") private var stabilizeSmoothing: Double = 50.0
     @State private var keepOptions = false // Keep options on Clear All
+    @State private var warnSlowMerge = false
     @State private var enableDeepValidation = false // Deep integrity check
     @State private var progress: Double = 0.0
     @State private var remainingTime: TimeInterval?
@@ -43,6 +44,10 @@ struct ContentView: View {
     @State private var outputFilename: String = ""
     @State private var errorLog: String?
     @State private var showErrorLog = false
+    @State private var showSlowMergeWarning = false
+    @State private var slowMergeWarningMessage = ""
+    @State private var pendingDestinationURL: URL? = nil
+    @State private var isPendingBatchProcess = false
     @State private var currentTask: Task<Void, Never>? // Active task reference
     
     enum Resolution: Int, CaseIterable, Identifiable {
@@ -226,7 +231,7 @@ struct ContentView: View {
                 .padding(.horizontal)
             }
             
-            HStack {
+            HStack(alignment: .bottom) {
                 if mergeOutput {
                     TextField(lm.localized("Output Filename"), text: $outputFilename)
                         .textFieldStyle(.roundedBorder)
@@ -236,52 +241,42 @@ struct ContentView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .frame(width: 200, alignment: .leading)
+                        .padding(.bottom, 6)
                 }
                 
-                VStack(alignment: .leading, spacing: 5) {
-                    Button(lm.localized("Clear All")) {
-                        // Cancel any running task
-                        currentTask?.cancel()
-                        currentTask = nil
-                        isProcessing = false
-                        
-                        files.removeAll()
-                        resetMessages()
-                        progress = 0.0
-                        remainingTime = nil
-                        errorLog = nil
-                        showErrorLog = false
-                        
-                        if !keepOptions {
-                            normalizeAudio = false
-                            fixJitter = false
-                            enableStabilize = false
-                            useHEVC = false
-                            enableDeepValidation = false
-                            selectedResolution = .original
-                        }
-                        outputFilename = ""
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 10) {
+                    HStack(spacing: 15) {
+                        Toggle(lm.localized("Keep Options"), isOn: $keepOptions)
+                            .toggleStyle(.checkbox)
+                            .help(lm.localized("Keep Options Help"))
+                            
+                        Toggle(lm.localized("Warn on Slow Process"), isOn: $warnSlowMerge)
+                            .toggleStyle(.checkbox)
+                            .help(lm.localized("Warn on Slow Process Help"))
                     }
-                    .disabled(files.isEmpty)
                     
-                    Toggle(lm.localized("Keep Options"), isOn: $keepOptions)
-                        .toggleStyle(.checkbox)
-                        .font(.caption)
-                        .help(lm.localized("Keep Options Help"))
-                }
-                
-                Button(lm.localized("Sort by Name")) {
-                    withAnimation {
-                        files.sort { $0.url.lastPathComponent < $1.url.lastPathComponent }
+                    HStack(spacing: 10) {
+                        Button(lm.localized("Clear All")) {
+                            clearAll()
+                        }
+                        .disabled(files.isEmpty)
+                        
+                        Button(lm.localized("Sort by Name")) {
+                            withAnimation {
+                                files.sort { $0.url.lastPathComponent < $1.url.lastPathComponent }
+                            }
+                        }
+                        .disabled(isProcessing || files.count < 2)
+                        
+                        Button(mergeOutput ? lm.localized("Merge Files") : lm.localized("Process Files")) {
+                            showSavePanel()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(isProcessing || files.isEmpty)
                     }
                 }
-                .disabled(isProcessing || files.count < 2)
-                
-                Button(mergeOutput ? lm.localized("Merge Files") : lm.localized("Process Files")) {
-                    showSavePanel()
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(isProcessing || files.isEmpty)
             }
             .padding()
             .padding(.bottom, 20)
@@ -323,6 +318,20 @@ struct ContentView: View {
             return true
         }
         .padding(.horizontal)
+        .alert(lm.localized("Processing Time Warning"), isPresented: $showSlowMergeWarning) {
+            Button(lm.localized("Cancel Processing"), role: .cancel) {
+                pendingDestinationURL = nil
+                clearAll()
+            }
+            Button(lm.localized("Proceed")) {
+                if let dest = pendingDestinationURL {
+                    proceedWithMerge(destination: dest, isBatch: isPendingBatchProcess)
+                }
+                pendingDestinationURL = nil
+            }
+        } message: {
+            Text(slowMergeWarningMessage + "\n\n" + lm.localized("This process will take a significant amount of time. Do you want to proceed?"))
+        }
     }
     
     private func fileRow(index: Int, file: MediaFile) -> some View {
@@ -392,6 +401,30 @@ struct ContentView: View {
     private func resetMessages() {
         errorMessage = nil
         successMessage = nil
+    }
+    
+    private func clearAll() {
+        // Cancel any running task
+        currentTask?.cancel()
+        currentTask = nil
+        isProcessing = false
+        
+        files.removeAll()
+        resetMessages()
+        progress = 0.0
+        remainingTime = nil
+        errorLog = nil
+        showErrorLog = false
+        
+        if !keepOptions {
+            normalizeAudio = false
+            fixJitter = false
+            enableStabilize = false
+            useHEVC = false
+            enableDeepValidation = false
+            selectedResolution = .original
+        }
+        outputFilename = ""
     }
     
     private func loadFiles(from providers: [NSItemProvider]) {
@@ -489,14 +522,87 @@ struct ContentView: View {
         let inputExt = firstFile.url.pathExtension.lowercased()
         let isSameExt = (inputExt == "mp4" && !useHEVC) || (inputExt == "mov" && useHEVC)
         
+        var suggestedName = ""
         if isSingleFile && suffixes.isEmpty && isSameExt {
             // No functional changes that alter name, avoid in-place overwrite
-            outputFilename = "\(baseName)_merged.\(ext)"
+            suggestedName = "\(baseName)_merged.\(ext)"
         } else {
-            outputFilename = "\(baseName)\(suffixes).\(ext)"
+            suggestedName = "\(baseName)\(suffixes).\(ext)"
+        }
+        
+        // 5. Prevent collision with any input file
+        var finalName = suggestedName
+        var attempt = 1
+        while files.contains(where: { $0.url.lastPathComponent.lowercased() == finalName.lowercased() }) {
+            if attempt == 1 {
+                finalName = "\(baseName)\(suffixes)_merged.\(ext)"
+            } else {
+                finalName = "\(baseName)\(suffixes)_merged\(attempt).\(ext)"
+            }
+            attempt += 1
+        }
+        
+        outputFilename = finalName
+    }
+    
+    private func proceedWithMerge(destination: URL, isBatch: Bool) {
+        if isBatch {
+            startBatchProcess(destinationFolder: destination)
+        } else {
+            startMerge(destination: destination)
         }
     }
     
+    private func checkMergeSpeedAndProceed(destination: URL, isBatch: Bool) {
+        guard !files.isEmpty else { return }
+        let currentFiles = files.map { $0.url }
+        let filtersActive = normalizeAudio || fixJitter || selectedResolution != .original || useHEVC || enableStabilize
+        
+        if !warnSlowMerge {
+            proceedWithMerge(destination: destination, isBatch: isBatch)
+            return
+        }
+        
+        if filtersActive {
+            self.slowMergeWarningMessage = lm.localized("Reason: Filters are active")
+            self.pendingDestinationURL = destination
+            self.isPendingBatchProcess = isBatch
+            self.showSlowMergeWarning = true
+            return
+        }
+        
+        isProcessing = true
+        statusMessage = lm.localized("Validating files...")
+        
+        Task {
+            do {
+                let runner = FFmpegRunner()
+                let requiresReencode = try await runner.validateFiles(files: currentFiles, checkFormat: true, deepCheck: false)
+                
+                await MainActor.run {
+                    self.isProcessing = false
+                    self.statusMessage = nil
+                    
+                    if requiresReencode {
+                        self.slowMergeWarningMessage = lm.localized("Reason: Format Mismatch")
+                        self.pendingDestinationURL = destination
+                        self.isPendingBatchProcess = isBatch
+                        self.showSlowMergeWarning = true
+                    } else {
+                        self.proceedWithMerge(destination: destination, isBatch: isBatch)
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    self.isProcessing = false
+                    self.statusMessage = nil
+                    self.errorLog = error.localizedDescription
+                    self.showErrorLog = true
+                }
+            }
+        }
+    }
+
     private func showSavePanel() {
         if mergeOutput {
             let panel = NSSavePanel()
@@ -511,7 +617,7 @@ struct ContentView: View {
             
             panel.begin { response in
                 if response == .OK, let url = panel.url {
-                    startMerge(destination: url)
+                    checkMergeSpeedAndProceed(destination: url, isBatch: false)
                 }
             }
         } else {
@@ -527,7 +633,7 @@ struct ContentView: View {
             
             panel.begin { response in
                 if response == .OK, let url = panel.url {
-                    startBatchProcess(destinationFolder: url)
+                    checkMergeSpeedAndProceed(destination: url, isBatch: true)
                 }
             }
         }
