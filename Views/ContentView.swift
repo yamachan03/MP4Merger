@@ -35,8 +35,8 @@ struct ContentView: View {
     @State private var useHEVC = false // Default off
     @State private var enableStabilize = false // Default off
     @AppStorage("stabilizeSmoothing") private var stabilizeSmoothing: Double = 50.0
-    @State private var keepOptions = false // Keep options on Clear All
-    @State private var warnSlowMerge = false
+    @AppStorage("keepOptions") private var keepOptions = false // Keep options on Clear All
+    @AppStorage("warnSlowMerge") private var warnSlowMerge = false
     @State private var enableDeepValidation = false // Deep integrity check
     @State private var progress: Double = 0.0
     @State private var remainingTime: TimeInterval?
@@ -231,51 +231,56 @@ struct ContentView: View {
                 .padding(.horizontal)
             }
             
-            HStack(alignment: .bottom) {
-                if mergeOutput {
-                    TextField(lm.localized("Output Filename"), text: $outputFilename)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 200)
-                } else {
-                    Text(lm.localized("Files will be saved in selected folder"))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .frame(width: 200, alignment: .leading)
-                        .padding(.bottom, 6)
+            HStack(alignment: .bottom, spacing: 20) {
+                VStack(alignment: .leading, spacing: 5) {
+                    if mergeOutput {
+                        Text(lm.localized("Output Filename"))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        TextField("", text: $outputFilename)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 220)
+                    } else {
+                        Text(lm.localized("Output Filename"))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text(lm.localized("Files will be saved in selected folder"))
+                            .foregroundColor(.secondary)
+                            .frame(width: 220, alignment: .leading)
+                            .padding(.bottom, 4)
+                    }
+                }
+                
+                VStack(alignment: .leading, spacing: 8) {
+                    Toggle(lm.localized("Keep Options"), isOn: $keepOptions)
+                        .toggleStyle(.checkbox)
+                        .help(lm.localized("Keep Options Help"))
+                        
+                    Toggle(lm.localized("Warn on Slow Process"), isOn: $warnSlowMerge)
+                        .toggleStyle(.checkbox)
+                        .help(lm.localized("Warn on Slow Process Help"))
                 }
                 
                 Spacer()
                 
-                VStack(alignment: .trailing, spacing: 10) {
-                    HStack(spacing: 15) {
-                        Toggle(lm.localized("Keep Options"), isOn: $keepOptions)
-                            .toggleStyle(.checkbox)
-                            .help(lm.localized("Keep Options Help"))
-                            
-                        Toggle(lm.localized("Warn on Slow Process"), isOn: $warnSlowMerge)
-                            .toggleStyle(.checkbox)
-                            .help(lm.localized("Warn on Slow Process Help"))
+                HStack(spacing: 10) {
+                    Button(lm.localized("Clear All")) {
+                        clearAll()
                     }
+                    .disabled(files.isEmpty)
                     
-                    HStack(spacing: 10) {
-                        Button(lm.localized("Clear All")) {
-                            clearAll()
+                    Button(lm.localized("Sort by Name")) {
+                        withAnimation {
+                            files.sort { $0.url.lastPathComponent < $1.url.lastPathComponent }
                         }
-                        .disabled(files.isEmpty)
-                        
-                        Button(lm.localized("Sort by Name")) {
-                            withAnimation {
-                                files.sort { $0.url.lastPathComponent < $1.url.lastPathComponent }
-                            }
-                        }
-                        .disabled(isProcessing || files.count < 2)
-                        
-                        Button(mergeOutput ? lm.localized("Merge Files") : lm.localized("Process Files")) {
-                            showSavePanel()
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(isProcessing || files.isEmpty)
                     }
+                    .disabled(isProcessing || files.count < 2)
+                    
+                    Button(mergeOutput ? lm.localized("Merge Files") : lm.localized("Process Files")) {
+                        showSavePanel()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(isProcessing || files.isEmpty)
                 }
             }
             .padding()
@@ -428,7 +433,11 @@ struct ContentView: View {
     }
     
     private func loadFiles(from providers: [NSItemProvider]) {
-        resetMessages()
+        if successMessage != nil {
+            clearAll()
+        } else {
+            resetMessages()
+        }
         Task {
             var newURLs: [URL] = []
             for provider in providers {
