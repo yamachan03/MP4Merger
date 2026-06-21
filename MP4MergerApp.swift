@@ -4,7 +4,7 @@ import SwiftUI
 struct MP4MergerApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
-    @StateObject private var languageManager = LanguageManager()
+    @StateObject private var languageManager = LanguageManager.shared
     
     var body: some Scene {
         WindowGroup {

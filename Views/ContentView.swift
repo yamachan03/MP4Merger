@@ -583,7 +583,7 @@ struct ContentView: View {
         isProcessing = true
         statusMessage = lm.localized("Validating files...")
         
-        Task {
+        currentTask = Task {
             do {
                 let runner = FFmpegRunner()
                 let requiresReencode = try await runner.validateFiles(files: currentFiles, checkFormat: true, deepCheck: false)
@@ -605,6 +605,7 @@ struct ContentView: View {
                 await MainActor.run {
                     self.isProcessing = false
                     self.statusMessage = nil
+                    self.errorMessage = error.localizedDescription
                     self.errorLog = error.localizedDescription
                     self.showErrorLog = true
                 }

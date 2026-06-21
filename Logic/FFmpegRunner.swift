@@ -316,7 +316,8 @@ struct FFmpegRunner {
                 let totalClips = workingFiles.count
                 
                 let trfURL = tempDir.appendingPathComponent("transform_\(UUID()).trf")
-                let stabURL = tempDir.appendingPathComponent("stabilized_\(UUID()).mp4")
+                let stabExt = useHEVC ? "mov" : "mp4"
+                let stabURL = tempDir.appendingPathComponent("stabilized_\(UUID()).\(stabExt)")
                 
                 defer {
                     try? fileManager.removeItem(at: trfURL)
@@ -335,13 +336,16 @@ struct FFmpegRunner {
                 
                 // Pass 2: vidstabtransform
                 let vCodec = useHEVC ? "hevc_videotoolbox" : "h264_videotoolbox"
-                let pass2Args = [
+                var pass2Args: [String] = [
                     "-i", file.path,
                     "-vf", "vidstabtransform=input=\(trfURL.path):smoothing=\(stabilizeSmoothing):crop=black:optzoom=1",
-                    "-c:v", vCodec, "-b:v", "20M", // High bitrate to preserve quality
+                    "-c:v", vCodec, "-b:v", "20M",
+                    "-r", "30", "-video_track_timescale", "90000",
+                    "-t", String(duration),
                     "-c:a", "copy",
-                    "-y", stabURL.path
                 ]
+                if useHEVC { pass2Args += ["-tag:v", "hvc1"] }
+                pass2Args += ["-y", stabURL.path]
                 print("🎥 Stabilize Pass 2 for clip \(clipNum)")
                 try await runFFmpeg(arguments: pass2Args, totalDuration: duration, offsetDuration: 0, startTime: Date()) { prog, rem in
                     onProgress(prog, rem, LanguageManager.shared.localizedDynamic("Stabilize Pass 2", args: ["\(clipNum)", "\(totalClips)"]))
@@ -437,7 +441,10 @@ struct FFmpegRunner {
             onProgress(0, -1, LanguageManager.shared.localizedDynamic("Fast merge failed. Attempting Rewrap (Tier 2)...", args: []))
             
             // 1. Check Codec
-            let firstCodec = await getVideoCodec(for: workingFiles.first!)
+            guard let firstWorkingFile = workingFiles.first else {
+                throw FFmpegError.commandFailed("Internal error: no working files available for Tier 2")
+            }
+            let firstCodec = await getVideoCodec(for: firstWorkingFile)
             let bsf: String?
             if firstCodec == "h264" { bsf = "h264_mp4toannexb" }
             else if firstCodec == "hevc" { bsf = "hevc_mp4toannexb" }
@@ -581,6 +588,8 @@ struct FFmpegRunner {
             
             let segmentDuration = fileDurations[index]
             
+            tempSegments.append(tempSegmentURL)
+
             try await runFFmpeg(
                 arguments: segArgs,
                 totalDuration: totalDuration,
@@ -591,8 +600,7 @@ struct FFmpegRunner {
                     onProgress(prog, remaining, LanguageManager.shared.localizedDynamic("Processing Segment {0}/{1}", args: ["\(index + 1)", "\(totalCount)"]))
                 }
             )
-            
-            tempSegments.append(tempSegmentURL)
+
             completedDuration += segmentDuration
         }
         
@@ -672,11 +680,15 @@ struct FFmpegRunner {
                     }
                 }
                 
+                var resumed = false
+
                 process.terminationHandler = { proc in
                     pipe.fileHandleForReading.readabilityHandler = nil
                     try? pipe.fileHandleForReading.close()
-                    
+
                     queue.sync {
+                        guard !resumed else { return }
+                        resumed = true
                         if proc.terminationStatus == 0 {
                             continuation.resume()
                         } else {
@@ -685,12 +697,16 @@ struct FFmpegRunner {
                         }
                     }
                 }
-                
+
                 do {
                     print("Running: \(arguments.joined(separator: " "))")
                     try process.run()
                 } catch {
-                    continuation.resume(throwing: error)
+                    queue.sync {
+                        guard !resumed else { return }
+                        resumed = true
+                        continuation.resume(throwing: error)
+                    }
                 }
             }
         } onCancel: {
@@ -724,11 +740,9 @@ struct FFmpegRunner {
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         let msg = String(data: data, encoding: .utf8) ?? ""
         
-        if checkProcess.terminationStatus != 0 || (!msg.isEmpty && msg.lowercased().contains("error")) {
-             // Ignoring generic warnings, looking for hard errors
-             if msg.contains("Error") || msg.contains("Invalid") {
-                 throw FFmpegError.commandFailed("Verification Integrity Error: \(msg)")
-             }
+        let hasError = checkProcess.terminationStatus != 0 || msg.lowercased().contains("error") || msg.contains("Invalid")
+        if hasError {
+            throw FFmpegError.commandFailed("Verification Integrity Error: \(msg)")
         }
         
         // 2. Duration Check (Critical for the 6-hour bug)
