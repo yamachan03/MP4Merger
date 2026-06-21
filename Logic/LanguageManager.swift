@@ -99,7 +99,35 @@ class LanguageManager: ObservableObject {
         "Reason: Filters are active": [.english: "Reason: Filters or resolution changes are active, requiring re-encoding.", .japanese: "理由：フィルター（音量均一化、手ブレ補正など）や解像度の変更が有効になっているため、再エンコードが必要です。"],
         "Reason: Format Mismatch": [.english: "Reason: The input files have different formats or properties, requiring re-encoding.", .japanese: "理由：入力ファイルのフォーマットやプロパティが異なるため、結合のための再エンコードが必要です。"],
         "Proceed": [.english: "Proceed", .japanese: "処理を進める"],
-        "Cancel Processing": [.english: "Cancel", .japanese: "作業をやめる"]
+        "Cancel Processing": [.english: "Cancel", .japanese: "作業をやめる"],
+
+        // --- FFmpeg セットアップ ---
+        "FFmpeg Required": [.english: "FFmpeg Required", .japanese: "FFmpegが必要です"],
+        "FFmpeg Setup Description": [.english: "FFmpeg is required to merge videos. Please install it using one of the methods below.", .japanese: "動画の結合にはFFmpegが必要です。以下のいずれかの方法でインストールしてください。"],
+        "Install via Homebrew": [.english: "Install via Homebrew (Recommended)", .japanese: "Homebrewでインストール（推奨）"],
+        "Homebrew Section Description": [.english: "If you have Homebrew installed, run this command in Terminal:", .japanese: "Homebrewをお使いの場合は、ターミナルで以下のコマンドを実行してください："],
+        "Copy": [.english: "Copy", .japanese: "コピー"],
+        "Copied!": [.english: "Copied!", .japanese: "コピー済み"],
+        "Verify Homebrew Install": [.english: "I've installed it — Verify", .japanese: "インストール済み — 確認する"],
+        "FFmpeg Not Found After Install": [.english: "FFmpeg not found. Please check that the installation completed successfully.", .japanese: "FFmpegが見つかりませんでした。インストールが正常に完了したか確認してください。"],
+        "Download Automatically": [.english: "Download Automatically", .japanese: "自動でダウンロード"],
+        "Auto Download Description": [.english: "For users unfamiliar with Homebrew. Downloads FFmpeg automatically (~52MB). Verified with SHA-256 for security.", .japanese: "Homebrewをご存知でない方向け。FFmpegを自動でダウンロードします（約52MB）。SHA-256でセキュリティ検証済みです。"],
+        "Download and Install": [.english: "Download & Install FFmpeg", .japanese: "FFmpegをダウンロード＆インストール"],
+        "Setup Complete!": [.english: "Setup Complete!", .japanese: "セットアップ完了！"],
+        "FFmpeg Ready Message": [.english: "FFmpeg is ready. You can now use MP4 Merger.", .japanese: "FFmpegの準備ができました。MP4 Mergerをご利用いただけます。"],
+        "Get Started": [.english: "Get Started", .japanese: "はじめる"],
+        "Downloading FFmpeg...": [.english: "Downloading FFmpeg...", .japanese: "FFmpegをダウンロード中..."],
+        "Verifying FFmpeg...": [.english: "Verifying FFmpeg...", .japanese: "FFmpegを検証中..."],
+        "Extracting FFmpeg...": [.english: "Extracting FFmpeg...", .japanese: "FFmpegを展開中..."],
+        "Downloading FFprobe...": [.english: "Downloading FFprobe...", .japanese: "FFprobeをダウンロード中..."],
+        "Verifying FFprobe...": [.english: "Verifying FFprobe...", .japanese: "FFprobeを検証中..."],
+        "Extracting FFprobe...": [.english: "Extracting FFprobe...", .japanese: "FFprobeを展開中..."],
+        "Testing binary...": [.english: "Testing binary...", .japanese: "動作確認中..."],
+        "FFmpeg Update Available": [.english: "FFmpeg {0} Available", .japanese: "FFmpeg {0} が利用可能です"],
+        "FFmpeg Update Description": [.english: "Installed: {0}  →  Recommended: {1}", .japanese: "インストール済み: {0}  →  推奨バージョン: {1}"],
+        "Update via Homebrew": [.english: "Update via Homebrew", .japanese: "Homebrewで更新"],
+        "Update Complete!": [.english: "Update Complete!", .japanese: "更新完了！"],
+        "Update": [.english: "Update", .japanese: "更新"]
     ]
     
     func localized(_ key: String) -> String {

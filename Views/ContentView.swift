@@ -49,6 +49,9 @@ struct ContentView: View {
     @State private var pendingDestinationURL: URL? = nil
     @State private var isPendingBatchProcess = false
     @State private var currentTask: Task<Void, Never>? // Active task reference
+    @State private var showFFmpegSetup = false
+    @State private var showFFmpegUpdate = false
+    @ObservedObject private var ffmpegSetup = FFmpegSetupManager.shared
     
     enum Resolution: Int, CaseIterable, Identifiable {
         case original = 0
@@ -82,7 +85,28 @@ struct ContentView: View {
                 .font(.footnote)
                 .foregroundColor(.secondary)
                 .padding(.bottom, 5)
-            
+
+            if ffmpegSetup.updateAvailable {
+                HStack(spacing: 8) {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .foregroundColor(.orange)
+                    Text(lm.localizedDynamic("FFmpeg Update Available", args: [FFmpegSetupManager.recommendedVersion]))
+                        .font(.caption)
+                    Spacer()
+                    Button(lm.localized("Update")) {
+                        showFFmpegUpdate = true
+                    }
+                    .font(.caption)
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color.orange.opacity(0.1))
+                .cornerRadius(8)
+                .padding(.horizontal)
+            }
+
             fileListSection
                 .frame(minHeight: 150, maxHeight: .infinity)
             
@@ -172,7 +196,7 @@ struct ContentView: View {
                     Image(systemName: "exclamationmark.triangle.fill").foregroundColor(.red)
                     Text(error).foregroundColor(.red)
                     Spacer()
-                    if let log = errorLog {
+                    if errorLog != nil {
                         Button(lm.localized("Show Log")) { showErrorLog = true }
                     }
                 }
@@ -286,8 +310,22 @@ struct ContentView: View {
             .padding()
             .padding(.bottom, 20)
         }
+        .onAppear {
+            showFFmpegSetup = !FFmpegSetupManager.isFFmpegAvailable()
+        }
+        .task {
+            await FFmpegSetupManager.shared.checkForUpdate()
+        }
+        .sheet(isPresented: $showFFmpegSetup) {
+            FFmpegSetupView(isPresented: $showFFmpegSetup)
+                .environmentObject(lm)
+        }
+        .sheet(isPresented: $showFFmpegUpdate) {
+            FFmpegSetupView(isPresented: $showFFmpegUpdate, isUpdate: true)
+                .environmentObject(lm)
+        }
     }
-    
+
     @ViewBuilder
     private var fileListSection: some View {
         ZStack {

@@ -15,7 +15,19 @@
 		A47AF0BF2FB95EC700FD15B2 /* LanguageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A47AF0BE2FB95EB400FD15B2 /* LanguageManager.swift */; };
 		A47AF0C12FB95EED00FD15B2 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A47AF0C02FB95EE300FD15B2 /* SettingsView.swift */; };
 		A484FC7C2FA1A3C50085D3F8 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A484FC7B2FA1A3A10085D3F8 /* ContentView.swift */; };
+		A4968AC52FE7D15200982163 /* FFmpegSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4968AC42FE7D15200982163 /* FFmpegSetup.swift */; };
+		A4968AC72FE7D15C00982163 /* FFmpegSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4968AC62FE7D15C00982163 /* FFmpegSetupView.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A4968AD02FE7D34C00982163 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A434229D2F056946003D878F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A43422A42F056946003D878F;
+			remoteInfo = MP4Merger;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		A43422A52F056946003D878F /* MP4Merger.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MP4Merger.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -29,6 +41,9 @@
 		A47AF0BE2FB95EB400FD15B2 /* LanguageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageManager.swift; sourceTree = "<group>"; };
 		A47AF0C02FB95EE300FD15B2 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		A484FC7B2FA1A3A10085D3F8 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A4968AC42FE7D15200982163 /* FFmpegSetup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FFmpegSetup.swift; sourceTree = "<group>"; };
+		A4968AC62FE7D15C00982163 /* FFmpegSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FFmpegSetupView.swift; sourceTree = "<group>"; };
+		A4968ACC2FE7D34C00982163 /* MP4MergerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MP4MergerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A4C462CC2F2F1F40008A2E4D /* MP4Merger.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MP4Merger.entitlements; sourceTree = "<group>"; };
 		A4D30CB32FB9835E00AC97FC /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -39,10 +54,22 @@
 			path = MP4Merger;
 			sourceTree = "<group>";
 		};
+		A4968ACD2FE7D34C00982163 /* MP4MergerTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = MP4MergerTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		A43422A22F056946003D878F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A4968AC92FE7D34C00982163 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -63,6 +90,7 @@
 				A43422B42F056984003D878F /* Logic */,
 				A43422B52F056984003D878F /* MP4MergerApp.swift */,
 				A43422B72F056984003D878F /* Views */,
+				A4968ACD2FE7D34C00982163 /* MP4MergerTests */,
 				A43422A62F056946003D878F /* Products */,
 				A457028E2FB97BDD003F61FB /* .gitignore */,
 				A4D30CB32FB9835E00AC97FC /* LICENSE */,
@@ -73,6 +101,7 @@
 			isa = PBXGroup;
 			children = (
 				A43422A52F056946003D878F /* MP4Merger.app */,
+				A4968ACC2FE7D34C00982163 /* MP4MergerTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -80,6 +109,7 @@
 		A43422B42F056984003D878F /* Logic */ = {
 			isa = PBXGroup;
 			children = (
+				A4968AC42FE7D15200982163 /* FFmpegSetup.swift */,
 				A43422B32F056984003D878F /* FFmpegRunner.swift */,
 				A47AF0BE2FB95EB400FD15B2 /* LanguageManager.swift */,
 			);
@@ -89,6 +119,7 @@
 		A43422B72F056984003D878F /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				A4968AC62FE7D15C00982163 /* FFmpegSetupView.swift */,
 				A484FC7B2FA1A3A10085D3F8 /* ContentView.swift */,
 				A47AF0C02FB95EE300FD15B2 /* SettingsView.swift */,
 			);
@@ -120,6 +151,29 @@
 			productReference = A43422A52F056946003D878F /* MP4Merger.app */;
 			productType = "com.apple.product-type.application";
 		};
+		A4968ACB2FE7D34C00982163 /* MP4MergerTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A4968AD22FE7D34C00982163 /* Build configuration list for PBXNativeTarget "MP4MergerTests" */;
+			buildPhases = (
+				A4968AC82FE7D34C00982163 /* Sources */,
+				A4968AC92FE7D34C00982163 /* Frameworks */,
+				A4968ACA2FE7D34C00982163 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A4968AD12FE7D34C00982163 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A4968ACD2FE7D34C00982163 /* MP4MergerTests */,
+			);
+			name = MP4MergerTests;
+			packageProductDependencies = (
+			);
+			productName = MP4MergerTests;
+			productReference = A4968ACC2FE7D34C00982163 /* MP4MergerTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -127,11 +181,15 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2620;
-				LastUpgradeCheck = 2620;
+				LastSwiftUpdateCheck = 2650;
+				LastUpgradeCheck = 2650;
 				TargetAttributes = {
 					A43422A42F056946003D878F = {
 						CreatedOnToolsVersion = 26.2;
+					};
+					A4968ACB2FE7D34C00982163 = {
+						CreatedOnToolsVersion = 26.5;
+						TestTargetID = A43422A42F056946003D878F;
 					};
 				};
 			};
@@ -151,6 +209,7 @@
 			projectRoot = "";
 			targets = (
 				A43422A42F056946003D878F /* MP4Merger */,
+				A4968ACB2FE7D34C00982163 /* MP4MergerTests */,
 			);
 		};
 /* End PBXProject section */
@@ -166,6 +225,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A4968ACA2FE7D34C00982163 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -173,15 +239,32 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A4968AC52FE7D15200982163 /* FFmpegSetup.swift in Sources */,
 				A43422B92F056984003D878F /* FFmpegRunner.swift in Sources */,
 				A47AF0C12FB95EED00FD15B2 /* SettingsView.swift in Sources */,
+				A4968AC72FE7D15C00982163 /* FFmpegSetupView.swift in Sources */,
 				A43422BA2F056984003D878F /* MP4MergerApp.swift in Sources */,
 				A484FC7C2FA1A3C50085D3F8 /* ContentView.swift in Sources */,
 				A47AF0BF2FB95EC700FD15B2 /* LanguageManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A4968AC82FE7D34C00982163 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A4968AD12FE7D34C00982163 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A43422A42F056946003D878F /* MP4Merger */;
+			targetProxy = A4968AD02FE7D34C00982163 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		A457028A2FB96843003F61FB /* Localizable.strings */ = {
@@ -201,6 +284,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -230,6 +314,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -254,6 +339,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -264,6 +350,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -293,6 +380,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -310,6 +398,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 			};
 			name = Release;
@@ -323,6 +412,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -354,6 +444,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -376,6 +467,58 @@
 			};
 			name = Release;
 		};
+		A4968AD32FE7D34C00982163 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = biz.yamayama.MP4MergerTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MP4Merger.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MP4Merger";
+				XROS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Debug;
+		};
+		A4968AD42FE7D34C00982163 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = biz.yamayama.MP4MergerTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MP4Merger.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MP4Merger";
+				XROS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -393,6 +536,15 @@
 			buildConfigurations = (
 				A43422B12F056947003D878F /* Debug */,
 				A43422B22F056947003D878F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A4968AD22FE7D34C00982163 /* Build configuration list for PBXNativeTarget "MP4MergerTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A4968AD32FE7D34C00982163 /* Debug */,
+				A4968AD42FE7D34C00982163 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

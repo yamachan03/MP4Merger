@@ -30,21 +30,25 @@ struct FFmpegRunner {
     
     // usage: private var ffmpegPath: String { ... }
     private var ffmpegPath: String {
-        // 1. Check for bundled ffmpeg in Resources
-        if let bundledPath = Bundle.main.path(forResource: "ffmpeg", ofType: nil) {
-            return bundledPath
-        }
-        // 2. Fallback to Homebrew path (for development)
-        return "/opt/homebrew/bin/ffmpeg"
+        // 1. Bundled in app resources (testing / custom distribution)
+        if let p = Bundle.main.path(forResource: "ffmpeg", ofType: nil) { return p }
+        // 2. Downloaded via in-app setup wizard → ~/Library/Application Support/MP4Merger/ffmpeg
+        if FileManager.default.fileExists(atPath: FFmpegSetupManager.ffmpegPath) { return FFmpegSetupManager.ffmpegPath }
+        // 3. Homebrew (Apple Silicon)
+        if FileManager.default.fileExists(atPath: "/opt/homebrew/bin/ffmpeg") { return "/opt/homebrew/bin/ffmpeg" }
+        // 4. Homebrew (Intel Mac)
+        return "/usr/local/bin/ffmpeg"
     }
 
     private var ffprobePath: String {
-        // 1. Check for bundled ffprobe in Resources
-        if let bundledPath = Bundle.main.path(forResource: "ffprobe", ofType: nil) {
-            return bundledPath
-        }
-        // 2. Fallback to Homebrew path (for development)
-        return "/opt/homebrew/bin/ffprobe"
+        // 1. Bundled
+        if let p = Bundle.main.path(forResource: "ffprobe", ofType: nil) { return p }
+        // 2. Downloaded via setup wizard
+        if FileManager.default.fileExists(atPath: FFmpegSetupManager.ffprobePath) { return FFmpegSetupManager.ffprobePath }
+        // 3. Homebrew (Apple Silicon)
+        if FileManager.default.fileExists(atPath: "/opt/homebrew/bin/ffprobe") { return "/opt/homebrew/bin/ffprobe" }
+        // 4. Homebrew (Intel Mac)
+        return "/usr/local/bin/ffprobe"
     }
     
     // Apply Finder tags with retries and dual strategy (URL resource value + xattr fallback)
