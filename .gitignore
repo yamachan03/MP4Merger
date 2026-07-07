@@ -21,3 +21,6 @@ concat_list.txt
 
 # FFmpeg Binary (Do not commit large binaries to Git due to size and license limits)
 ffmpeg
+
+# Notarization build output
+build/
