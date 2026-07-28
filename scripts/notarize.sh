@@ -17,7 +17,12 @@ cd "$(dirname "$0")/.."
 
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 PROFILE="tagfinder-notary"
-IDENTITY="Developer ID Application: (redacted) (7JSPUB92B6)"
+TEAM_ID="7JSPUB92B6"
+IDENTITY=$(security find-identity -v -p codesigning | grep "Developer ID Application.*($TEAM_ID)" | head -1 | sed -E 's/.*"(.+)"/\1/')
+if [ -z "$IDENTITY" ]; then
+  echo "No 'Developer ID Application' identity for team $TEAM_ID found in keychain." >&2
+  exit 1
+fi
 BUILD_DIR="build"
 
 echo "==> 1/7 Archiving (Release)"
@@ -26,7 +31,7 @@ xcodebuild -project MP4Merger.xcodeproj -scheme MP4Merger -configuration Release
   archive -archivePath "$BUILD_DIR/MP4Merger.xcarchive" -quiet
 
 echo "==> 2/7 Exporting with Developer ID signing"
-cat > "$BUILD_DIR/ExportOptions.plist" << 'EOF'
+cat > "$BUILD_DIR/ExportOptions.plist" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -34,7 +39,7 @@ cat > "$BUILD_DIR/ExportOptions.plist" << 'EOF'
     <key>method</key>
     <string>developer-id</string>
     <key>teamID</key>
-    <string>7JSPUB92B6</string>
+    <string>$TEAM_ID</string>
     <key>signingStyle</key>
     <string>automatic</string>
 </dict>

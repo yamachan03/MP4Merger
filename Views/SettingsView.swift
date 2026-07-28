@@ -19,9 +19,7 @@ struct SettingsView: View {
     }
 }
 //
-//  Untitled.swift
+//  SettingsView.swift
 //  MP4Merger
-//
-//  Created by (redacted) on 2026/05/17.
 //
 

@@ -20,6 +20,4 @@ let package = Package(
 //  Package.swift
 //  MP4Merger
 //
-//  Created by (redacted) on 2026/05/17.
-//
 

@@ -104,6 +104,4 @@ echo "open ${OUTPUT_DIR}"
 //  build_app.sh
 //  MP4Merger
 //
-//  Created by (redacted) on 2026/05/17.
-//
 
