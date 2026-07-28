@@ -7,6 +7,12 @@ MP4 Merger is a simple and intuitive native macOS application designed to proces
 
 ---
 
+## 📥 Download
+
+[**Download MP4Merger.zip**](https://github.com/yamachan03/MP4Merger/releases/latest/download/MP4Merger.zip) — signed and notarized by Apple, ready to run. FFmpeg is bundled inside, so no separate installation is needed.
+
+---
+
 ## ✨ Key Features
 
 * **Batch Processing & Merging:** Choose to either seamlessly merge multiple clips into a single file, or process multiple files individually in a batch sequence.
@@ -65,6 +71,12 @@ This software uses code of **[FFmpeg](https://ffmpeg.org/)** licensed under the 
 
 MP4 Mergerは、Macユーザーのために設計された直感的な動画処理ツールです。複雑な編集ソフトを使わずに、バラバラの動画ファイルを一本にまとめたり、複数ファイルに対して手ブレ補正や音量均一化を一括で適用することができます。
 *Apple Silicon (M1/M2/M3) の VideoToolbox ハードウェアアクセラレーションに極限まで最適化されています。*
+
+---
+
+## 📥 ダウンロード
+
+[**MP4Merger.zipをダウンロード**](https://github.com/yamachan03/MP4Merger/releases/latest/download/MP4Merger.zip) — Appleの署名・公証済みなので、そのまま起動できます。ffmpegはアプリ内に同梱済みのため、別途インストールは不要です。
 
 ---
 
