@@ -9,7 +9,9 @@ MP4 Merger is a simple and intuitive native macOS application designed to proces
 
 ## 📥 Download
 
-[**Download MP4Merger.zip**](https://github.com/yamachan03/MP4Merger/releases/latest/download/MP4Merger.zip) — signed and notarized by Apple, ready to run. FFmpeg is bundled inside, so no separate installation is needed.
+[**Download MP4Merger.zip**](https://github.com/yamachan03/MP4Merger/releases/latest/download/MP4Merger.zip) — signed and notarized by Apple, ready to run.
+
+FFmpeg is **not** bundled with the app. On first launch, a setup wizard helps you either install it via [Homebrew](https://brew.sh) or download an official build from [evermeet.cx](https://evermeet.cx/ffmpeg/) (with SHA-256 verification). If FFmpeg is already installed, the app finds it automatically.
 
 ---
 
@@ -48,7 +50,7 @@ You can build the standalone app bundle using the provided shell script:
 ```bash
 ./build_app.sh
 ```
-This script will compile the Swift code, bundle the local `ffmpeg` binary (if available) inside the app, apply necessary entitlements, and generate `MP4Merger.app`.
+This script compiles the Swift code, applies the necessary entitlements, and generates `MP4Merger.app`. The `ffmpeg` binary is **not** bundled — the app locates it at runtime (Application Support → Homebrew → `/usr/local`) or offers to download it on first launch.
 
 ---
 
@@ -57,10 +59,10 @@ This script will compile the Swift code, bundle the local `ffmpeg` binary (if av
 This project is licensed under the **MIT License**.
 
 ### Acknowledgments & FFmpeg License
-This software uses code of **[FFmpeg](https://ffmpeg.org/)** licensed under the **LGPLv2.1** (or GPL depending on your build configuration) and its source can be downloaded from the [official FFmpeg website](https://ffmpeg.org/download.html). FFmpeg is a trademark of Fabrice Bellard, originator of the FFmpeg project.
+This application invokes **[FFmpeg](https://ffmpeg.org/)** as a separate external program. FFmpeg is **not** bundled with or distributed as part of this app; the user obtains it separately (via Homebrew, or via the in-app download from [evermeet.cx](https://evermeet.cx/ffmpeg/)). Note that both the Homebrew formula and the evermeet.cx builds are compiled with `--enable-gpl --enable-version3`, so those binaries are licensed under the **GPLv3**. Their corresponding source code is available from the respective distributors ([evermeet.cx source page](https://evermeet.cx/ffmpeg/#source), [Homebrew formula](https://formulae.brew.sh/formula/ffmpeg)) and from the [official FFmpeg website](https://ffmpeg.org/download.html). FFmpeg is a trademark of Fabrice Bellard, originator of the FFmpeg project.
 
 > **Note to Developers / Forkers**: 
-> If you distribute a compiled `.app` bundle that includes the `ffmpeg` binary, you must comply with FFmpeg's license. This generally requires preserving copyright notices, distributing this license information, and indicating where the FFmpeg source code can be obtained. Please do not commit the `ffmpeg` binary directly to your Git repository due to GitHub's file size limits.
+> Do **not** bundle a GPL-enabled `ffmpeg` binary inside a distributed `.app` — doing so makes you a distributor of a GPLv3 binary, which requires you to ship the complete corresponding source code, the exact build configuration, and the GPL license text alongside your release. This project deliberately avoids that by resolving FFmpeg at runtime instead. The notarization script fails intentionally if it detects a bundled `Resources/ffmpeg`.
 
 ---
 ---
@@ -76,7 +78,9 @@ MP4 Mergerは、Macユーザーのために設計された直感的な動画処�
 
 ## 📥 ダウンロード
 
-[**MP4Merger.zipをダウンロード**](https://github.com/yamachan03/MP4Merger/releases/latest/download/MP4Merger.zip) — Appleの署名・公証済みなので、そのまま起動できます。ffmpegはアプリ内に同梱済みのため、別途インストールは不要です。
+[**MP4Merger.zipをダウンロード**](https://github.com/yamachan03/MP4Merger/releases/latest/download/MP4Merger.zip) — Appleの署名・公証済みなので、そのまま起動できます。
+
+FFmpegはアプリに**同梱されていません**。初回起動時にセットアップ画面が表示され、[Homebrew](https://brew.sh) でのインストール、または [evermeet.cx](https://evermeet.cx/ffmpeg/) の公式ビルドの自動ダウンロード（SHA-256検証付き）を選べます。すでにFFmpegがインストールされていれば自動的に検出されます。
 
 ---
 
@@ -114,7 +118,7 @@ brew install ffmpeg
 ```bash
 ./build_app.sh
 ```
-これにより、Swiftコードがコンパイルされ、ローカルの `ffmpeg` バイナリがアプリ内に同梱され、必要な署名が行われた `MP4Merger.app` が作成されます。
+これにより、Swiftコードがコンパイルされ、必要な署名が行われた `MP4Merger.app` が作成されます。`ffmpeg` バイナリはアプリに**同梱されません**。実行時に Application Support → Homebrew → `/usr/local` の順で検索され、見つからない場合は初回起動時にダウンロードを案内します。
 
 ---
 
@@ -123,7 +127,7 @@ brew install ffmpeg
 このプロジェクトは **MITライセンス** のもとで公開されています。
 
 ### FFmpegの利用について
-本ソフトウェアは、LGPLv2.1（ビルド設定によってはGPL）ライセンスに基づき [FFmpeg](https://ffmpeg.org) プロジェクトのコードを使用しています。ソースコードは公式ウェブサイトから取得可能です。FFmpegは、FFmpegプロジェクトの創設者であるFabrice Bellard氏の商標です。
+本アプリは **[FFmpeg](https://ffmpeg.org)** を外部プログラムとして呼び出して利用します。FFmpegはアプリに**同梱・配布されていません**。ユーザーが Homebrew またはアプリ内ダウンロード（[evermeet.cx](https://evermeet.cx/ffmpeg/)）を通じて別途取得します。なお、Homebrew版・evermeet.cx版はいずれも `--enable-gpl --enable-version3` でビルドされているため、これらのバイナリのライセンスは **GPLv3** です。対応するソースコードは各配布元（[evermeet.cxのソースページ](https://evermeet.cx/ffmpeg/#source)、[Homebrewフォーミュラ](https://formulae.brew.sh/formula/ffmpeg)）および [FFmpeg公式サイト](https://ffmpeg.org/download.html) から入手できます。FFmpegは、FFmpegプロジェクトの創設者であるFabrice Bellard氏の商標です。
 
 > **開発者の方へ**:
-> アプリ（`.app`）内に `ffmpeg` バイナリを同梱して配布する場合、LGPL/GPLライセンスの条項に従う必要があります（ライセンス表記とソースコード入手元の明記など）。また、ファイルサイズ制限の観点から、`ffmpeg` 本体をそのままGitHub等にコミットしないようご注意ください。
+> GPL構成の `ffmpeg` バイナリを `.app` 内に同梱して配布すると、あなた自身がGPLv3バイナリの配布者となり、完全な対応ソースコード・ビルド構成の明記・GPLライセンス全文の同梱が義務になります。本プロジェクトはこれを避けるため、意図的にFFmpegを実行時解決にしています。公証スクリプト（notarize.sh）は `Resources/ffmpeg` を検出するとエラーで停止します。

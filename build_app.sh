@@ -32,17 +32,11 @@ mkdir -p "${APP_BUNDLE}/Contents/Resources"
 echo "📋 Copying executable..."
 cp "${BUILD_PATH}/${EXECUTABLE_NAME}" "${APP_BUNDLE}/Contents/MacOS/"
 
-# Copy FFmpeg if present in project root, or fallback to system one for testing
-echo "🎬 Bundling FFmpeg..."
-if [ -f "ffmpeg" ]; then
-    echo "   Using local ffmpeg binary."
-    cp "ffmpeg" "${APP_BUNDLE}/Contents/Resources/"
-elif [ -f "/opt/homebrew/bin/ffmpeg" ]; then
-    echo "   Using system ffmpeg binary (Dynamic! Not for distribution!)."
-    cp "/opt/homebrew/bin/ffmpeg" "${APP_BUNDLE}/Contents/Resources/"
-else
-    echo "⚠️  FFmpeg not found! App may crash."
-fi
+# NOTE: FFmpeg is NOT bundled. The app resolves it at runtime
+# (Application Support -> Homebrew -> /usr/local) and offers a
+# first-launch download wizard if none is found. Bundling a GPL
+# ffmpeg build would impose GPL distribution obligations on this app.
+echo "🎬 FFmpeg is not bundled (resolved at runtime by the app)."
 
 # Copy Icon if present
 echo "icon Bundling Icon..."

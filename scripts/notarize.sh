@@ -1,9 +1,9 @@
 #!/bin/bash
 # Archive, sign with Developer ID, notarize, staple, and verify MP4Merger.
 #
-# The bundled ffmpeg executable (Contents/Resources/ffmpeg) must carry its own
-# Developer ID signature with the hardened runtime, or the notary service
-# rejects the app -- it is signed explicitly, then the app seal is re-signed.
+# FFmpeg is intentionally NOT bundled (license: the evermeet.cx/Homebrew
+# builds are GPL). The app locates or downloads ffmpeg at runtime. If a
+# stray Resources/ffmpeg is found in the export, this script aborts.
 #
 # Prerequisites (one-time; shared with TagFinder):
 #   1. A "Developer ID Application" certificate in the keychain
@@ -25,12 +25,12 @@ if [ -z "$IDENTITY" ]; then
 fi
 BUILD_DIR="build"
 
-echo "==> 1/7 Archiving (Release)"
+echo "==> 1/8 Archiving (Release)"
 rm -rf "$BUILD_DIR"
 xcodebuild -project MP4Merger.xcodeproj -scheme MP4Merger -configuration Release \
   archive -archivePath "$BUILD_DIR/MP4Merger.xcarchive" -quiet
 
-echo "==> 2/7 Exporting with Developer ID signing"
+echo "==> 2/8 Exporting with Developer ID signing"
 cat > "$BUILD_DIR/ExportOptions.plist" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -51,27 +51,34 @@ xcodebuild -exportArchive -archivePath "$BUILD_DIR/MP4Merger.xcarchive" \
 
 APP="$BUILD_DIR/export/MP4Merger.app"
 
-echo "==> 3/7 Signing bundled ffmpeg (hardened runtime + timestamp)"
-codesign --force --options runtime --timestamp \
-  --sign "$IDENTITY" "$APP/Contents/Resources/ffmpeg"
+echo "==> 3/8 Verifying no ffmpeg is bundled"
+if [ -f "$APP/Contents/Resources/ffmpeg" ]; then
+  echo "ERROR: Resources/ffmpeg found in the exported app." >&2
+  echo "FFmpeg must not be bundled (GPL build). Remove it from the Xcode project." >&2
+  exit 1
+fi
 
-echo "==> 4/7 Re-signing the app bundle"
+echo "==> 4/8 Re-signing the app bundle"
 codesign --force --options runtime --timestamp \
   --entitlements MP4Merger.entitlements \
   --sign "$IDENTITY" "$APP"
 
-echo "==> 5/7 Zipping and submitting to Apple notary service"
-ditto -c -k --keepParent "$APP" "$BUILD_DIR/MP4Merger.zip"
-xcrun notarytool submit "$BUILD_DIR/MP4Merger.zip" \
+echo "==> 5/8 Zipping and submitting to Apple notary service"
+ditto -c -k --keepParent "$APP" "$BUILD_DIR/MP4Merger-notary-submission.zip"
+xcrun notarytool submit "$BUILD_DIR/MP4Merger-notary-submission.zip" \
   --keychain-profile "$PROFILE" --wait
 
-echo "==> 6/7 Stapling the notarization ticket"
+echo "==> 6/8 Stapling the notarization ticket"
 xcrun stapler staple "$APP"
 
-echo "==> 7/7 Verifying"
+echo "==> 7/8 Verifying"
 spctl -a -vv "$APP"
 xcrun stapler validate "$APP"
 
+echo "==> 8/8 Creating release zip (stapled app)"
+ditto -c -k --keepParent "$APP" "$BUILD_DIR/MP4Merger.zip"
+
 echo
 echo "Done: $APP"
+echo "Release asset (upload this to GitHub Releases): $BUILD_DIR/MP4Merger.zip"
 echo "Install with: rm -rf /Applications/MP4Merger/MP4Merger.app && ditto '$APP' /Applications/MP4Merger/MP4Merger.app"

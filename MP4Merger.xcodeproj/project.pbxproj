@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		A43422B92F056984003D878F /* FFmpegRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A43422B32F056984003D878F /* FFmpegRunner.swift */; };
 		A43422BA2F056984003D878F /* MP4MergerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A43422B52F056984003D878F /* MP4MergerApp.swift */; };
-		A43422BC2F056AE5003D878F /* ffmpeg in Resources */ = {isa = PBXBuildFile; fileRef = A43422BB2F056AE5003D878F /* ffmpeg */; };
 		A457028B2FB96843003F61FB /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A457028A2FB96843003F61FB /* Localizable.strings */; };
 		A45702922FB97E91003F61FB /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = A45702912FB97E91003F61FB /* README.md */; };
 		A47AF0BF2FB95EC700FD15B2 /* LanguageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A47AF0BE2FB95EB400FD15B2 /* LanguageManager.swift */; };
@@ -33,7 +32,6 @@
 		A43422A52F056946003D878F /* MP4Merger.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MP4Merger.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A43422B32F056984003D878F /* FFmpegRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FFmpegRunner.swift; sourceTree = "<group>"; };
 		A43422B52F056984003D878F /* MP4MergerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MP4MergerApp.swift; sourceTree = "<group>"; };
-		A43422BB2F056AE5003D878F /* ffmpeg */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = ffmpeg; sourceTree = "<group>"; };
 		A45702892FB96843003F61FB /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
 		A457028C2FB96846003F61FB /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		A457028E2FB97BDD003F61FB /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
@@ -85,7 +83,6 @@
 				A45702912FB97E91003F61FB /* README.md */,
 				A457028A2FB96843003F61FB /* Localizable.strings */,
 				A4C462CC2F2F1F40008A2E4D /* MP4Merger.entitlements */,
-				A43422BB2F056AE5003D878F /* ffmpeg */,
 				A43422A72F056946003D878F /* MP4Merger */,
 				A43422B42F056984003D878F /* Logic */,
 				A43422B52F056984003D878F /* MP4MergerApp.swift */,
@@ -219,7 +216,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A43422BC2F056AE5003D878F /* ffmpeg in Resources */,
 				A457028B2FB96843003F61FB /* Localizable.strings in Resources */,
 				A45702922FB97E91003F61FB /* README.md in Resources */,
 			);

@@ -1,8 +1,7 @@
 # Xcode & SwiftPM
 .build/
 .swiftpm/
-*.xcodeproj/xcuserdata/
-*.xcworkspace/xcuserdata/
+**/xcuserdata/
 DerivedData/
 
 # macOS
@@ -24,3 +23,7 @@ ffmpeg
 
 # Notarization build output
 build/
+notarize_log.txt
+
+# Claude Code local config
+.claude/
