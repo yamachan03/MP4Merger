@@ -55,8 +55,8 @@ final class FFmpegSetupManager: ObservableObject {
     // MARK: - Architecture
 
     // CPU types from <mach/machine.h>
-    private static let cpuTypeARM64: UInt32  = 0x0100_000C
-    private static let cpuTypeX86_64: UInt32 = 0x0100_0007
+    nonisolated private static let cpuTypeARM64: UInt32  = 0x0100_000C
+    nonisolated private static let cpuTypeX86_64: UInt32 = 0x0100_0007
 
     nonisolated static var isAppleSilicon: Bool {
         #if arch(arm64)
