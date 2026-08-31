@@ -156,6 +156,15 @@ struct FFmpegSetupView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
 
+                // evermeet.cx ships Intel-only builds; say so before the user commits
+                // to a ~52MB download that will then ask them to install Rosetta.
+                if FFmpegSetupManager.isAppleSilicon {
+                    Label(lm.localized("Intel Only Download Warning"), systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
                 if setup.isDownloading {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(setup.phase)

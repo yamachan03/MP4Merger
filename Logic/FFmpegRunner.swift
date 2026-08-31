@@ -28,27 +28,15 @@ struct FFmpegRunner {
         }
     }
     
-    // usage: private var ffmpegPath: String { ... }
+    // Resolution order (bundle → setup-wizard download → Homebrew) lives in
+    // FFmpegSetupManager, which prefers a build native to this Mac so an
+    // Intel-only download does not drag Apple Silicon users through Rosetta.
     private var ffmpegPath: String {
-        // 1. Bundled in app resources (testing / custom distribution)
-        if let p = Bundle.main.path(forResource: "ffmpeg", ofType: nil) { return p }
-        // 2. Downloaded via in-app setup wizard → ~/Library/Application Support/MP4Merger/ffmpeg
-        if FileManager.default.fileExists(atPath: FFmpegSetupManager.ffmpegPath) { return FFmpegSetupManager.ffmpegPath }
-        // 3. Homebrew (Apple Silicon)
-        if FileManager.default.fileExists(atPath: "/opt/homebrew/bin/ffmpeg") { return "/opt/homebrew/bin/ffmpeg" }
-        // 4. Homebrew (Intel Mac)
-        return "/usr/local/bin/ffmpeg"
+        FFmpegSetupManager.resolvedFFmpegExecutable ?? "/usr/local/bin/ffmpeg"
     }
 
     private var ffprobePath: String {
-        // 1. Bundled
-        if let p = Bundle.main.path(forResource: "ffprobe", ofType: nil) { return p }
-        // 2. Downloaded via setup wizard
-        if FileManager.default.fileExists(atPath: FFmpegSetupManager.ffprobePath) { return FFmpegSetupManager.ffprobePath }
-        // 3. Homebrew (Apple Silicon)
-        if FileManager.default.fileExists(atPath: "/opt/homebrew/bin/ffprobe") { return "/opt/homebrew/bin/ffprobe" }
-        // 4. Homebrew (Intel Mac)
-        return "/usr/local/bin/ffprobe"
+        FFmpegSetupManager.resolvedFFprobeExecutable ?? "/usr/local/bin/ffprobe"
     }
     
     // Apply Finder tags with retries and dual strategy (URL resource value + xattr fallback)

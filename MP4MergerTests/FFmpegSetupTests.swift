@@ -124,4 +124,62 @@ final class FFmpegSetupTests: XCTestCase {
         let isOlder = FFmpegSetupManager.isOlderThan(parsed!, FFmpegSetupManager.recommendedVersion)
         XCTAssertFalse(isOlder, "推奨バージョンと同じならフラグは立たないべき")
     }
+
+    // MARK: - 3. アーキテクチャ判定（Rosetta 回避）
+
+    /// Thin little-endian 64-bit Mach-O header for `cpuType`.
+    private func thinHeader(cpuType: UInt32) -> [UInt8] {
+        var bytes: [UInt8] = [0xCF, 0xFA, 0xED, 0xFE]           // magic 0xFEEDFACF (little-endian)
+        withUnsafeBytes(of: cpuType.littleEndian) { bytes.append(contentsOf: $0) }
+        bytes.append(contentsOf: [UInt8](repeating: 0, count: 24))
+        return bytes
+    }
+
+    /// Fat (universal) header listing `cpuTypes`. Fat headers are big-endian.
+    private func fatHeader(cpuTypes: [UInt32]) -> [UInt8] {
+        var bytes: [UInt8] = [0xCA, 0xFE, 0xBA, 0xBE]           // FAT_MAGIC
+        withUnsafeBytes(of: UInt32(cpuTypes.count).bigEndian) { bytes.append(contentsOf: $0) }
+        for cpu in cpuTypes {
+            withUnsafeBytes(of: cpu.bigEndian) { bytes.append(contentsOf: $0) }
+            bytes.append(contentsOf: [UInt8](repeating: 0, count: 16))  // rest of fat_arch
+        }
+        return bytes
+    }
+
+    private var foreignCPUType: UInt32 {
+        // Whichever of arm64 / x86_64 this Mac is not
+        FFmpegSetupManager.isAppleSilicon ? 0x0100_0007 : 0x0100_000C
+    }
+
+    func test_hasNativeSlice_thinNativeBinary_returnsTrue() {
+        XCTAssertTrue(FFmpegSetupManager.hasNativeSlice(header: thinHeader(cpuType: FFmpegSetupManager.nativeCPUType)))
+    }
+
+    func test_hasNativeSlice_thinForeignBinary_returnsFalse() {
+        // evermeet.cx の ffmpeg はこれ（Apple Silicon では Rosetta が必要）
+        XCTAssertFalse(FFmpegSetupManager.hasNativeSlice(header: thinHeader(cpuType: foreignCPUType)))
+    }
+
+    func test_hasNativeSlice_universalBinary_returnsTrue() {
+        let header = fatHeader(cpuTypes: [foreignCPUType, FFmpegSetupManager.nativeCPUType])
+        XCTAssertTrue(FFmpegSetupManager.hasNativeSlice(header: header))
+    }
+
+    func test_hasNativeSlice_fatWithoutNativeSlice_returnsFalse() {
+        XCTAssertFalse(FFmpegSetupManager.hasNativeSlice(header: fatHeader(cpuTypes: [foreignCPUType])))
+    }
+
+    func test_hasNativeSlice_garbage_returnsFalse() {
+        XCTAssertFalse(FFmpegSetupManager.hasNativeSlice(header: []))
+        XCTAssertFalse(FFmpegSetupManager.hasNativeSlice(header: [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07]))
+    }
+
+    func test_isNativeBinary_systemBinary_returnsTrue() {
+        // /bin/ls は必ずこの Mac でネイティブに動く
+        XCTAssertTrue(FFmpegSetupManager.isNativeBinary(atPath: "/bin/ls"))
+    }
+
+    func test_isNativeBinary_missingPath_returnsFalse() {
+        XCTAssertFalse(FFmpegSetupManager.isNativeBinary(atPath: "/nonexistent/ffmpeg"))
+    }
 }

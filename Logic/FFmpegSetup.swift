@@ -52,25 +52,99 @@ final class FFmpegSetupManager: ObservableObject {
         appSupportDirectory.appendingPathComponent("ffprobe").path
     }
 
+    // MARK: - Architecture
+
+    // CPU types from <mach/machine.h>
+    private static let cpuTypeARM64: UInt32  = 0x0100_000C
+    private static let cpuTypeX86_64: UInt32 = 0x0100_0007
+
+    nonisolated static var isAppleSilicon: Bool {
+        #if arch(arm64)
+        return true
+        #else
+        return false
+        #endif
+    }
+
+    nonisolated static var nativeCPUType: UInt32 {
+        isAppleSilicon ? cpuTypeARM64 : cpuTypeX86_64
+    }
+
+    /// True when the Mach-O at `path` has a slice for this Mac's own CPU.
+    /// Reads the header directly rather than running the binary — launching an
+    /// Intel-only binary on Apple Silicon is exactly what triggers the Rosetta prompt.
+    nonisolated static func isNativeBinary(atPath path: String) -> Bool {
+        guard let handle = FileHandle(forReadingAtPath: path) else { return false }
+        defer { try? handle.close() }
+        guard let header = try? handle.read(upToCount: 4096) else { return false }
+        return hasNativeSlice(header: [UInt8](header))
+    }
+
+    // Exposed for unit testing
+    nonisolated static func hasNativeSlice(header bytes: [UInt8]) -> Bool {
+        func be32(_ offset: Int) -> UInt32? {
+            guard offset >= 0, offset + 4 <= bytes.count else { return nil }
+            return UInt32(bytes[offset]) << 24 | UInt32(bytes[offset + 1]) << 16
+                 | UInt32(bytes[offset + 2]) << 8 | UInt32(bytes[offset + 3])
+        }
+
+        guard let magic = be32(0) else { return false }
+        switch magic {
+        case 0xCAFE_BABE, 0xCAFE_BABF:
+            // Universal binary. Fat headers are always stored big-endian.
+            guard let count = be32(4) else { return false }
+            let entrySize = (magic == 0xCAFE_BABF) ? 32 : 20   // fat_arch_64 / fat_arch
+            for i in 0..<Int(min(count, 32)) {
+                guard let cpu = be32(8 + i * entrySize) else { return false }
+                if cpu == nativeCPUType { return true }
+            }
+            return false
+        case 0xCFFA_EDFE, 0xCEFA_EDFE:
+            // Thin little-endian Mach-O (magic 0xFEEDFACF / 0xFEEDFACE); cputype follows the magic.
+            guard let cpu = be32(4) else { return false }
+            return cpu.byteSwapped == nativeCPUType
+        default:
+            return false
+        }
+    }
+
     // MARK: - Availability Check
+
+    /// Lookup locations for `tool`, in preference order.
+    nonisolated private static func candidatePaths(for tool: String) -> [String] {
+        var paths: [String] = []
+        if let bundled = Bundle.main.path(forResource: tool, ofType: nil) { paths.append(bundled) }
+        paths.append(appSupportDirectory.appendingPathComponent(tool).path)  // setup wizard download
+        paths.append("/opt/homebrew/bin/\(tool)")                            // Homebrew (Apple Silicon)
+        paths.append("/usr/local/bin/\(tool)")                               // Homebrew (Intel)
+        return paths
+    }
+
+    /// Resolves `tool`, preferring a build that runs natively on this Mac.
+    /// The evermeet.cx binary installed by the setup wizard is Intel-only, so on
+    /// Apple Silicon a native Homebrew build wins over it — otherwise macOS asks
+    /// the user to install Rosetta. A non-native binary is still returned when it
+    /// is the only one present.
+    nonisolated static func resolve(_ tool: String) -> String? {
+        let existing = candidatePaths(for: tool).filter { FileManager.default.fileExists(atPath: $0) }
+        return existing.first { isNativeBinary(atPath: $0) } ?? existing.first
+    }
 
     nonisolated static func isFFmpegAvailable() -> Bool {
         #if DEBUG
         if CommandLine.arguments.contains("--simulate-no-ffmpeg") { return false }
         #endif
-        if Bundle.main.path(forResource: "ffmpeg", ofType: nil) != nil { return true }
-        if FileManager.default.fileExists(atPath: ffmpegPath) { return true }
-        if FileManager.default.fileExists(atPath: "/opt/homebrew/bin/ffmpeg") { return true }
-        if FileManager.default.fileExists(atPath: "/usr/local/bin/ffmpeg") { return true }
-        return false
+        return resolvedFFmpegExecutable != nil
     }
 
-    nonisolated static var resolvedFFmpegExecutable: String? {
-        if let p = Bundle.main.path(forResource: "ffmpeg", ofType: nil) { return p }
-        if FileManager.default.fileExists(atPath: ffmpegPath) { return ffmpegPath }
-        if FileManager.default.fileExists(atPath: "/opt/homebrew/bin/ffmpeg") { return "/opt/homebrew/bin/ffmpeg" }
-        if FileManager.default.fileExists(atPath: "/usr/local/bin/ffmpeg") { return "/usr/local/bin/ffmpeg" }
-        return nil
+    nonisolated static var resolvedFFmpegExecutable: String? { resolve("ffmpeg") }
+
+    nonisolated static var resolvedFFprobeExecutable: String? { resolve("ffprobe") }
+
+    /// True when the ffmpeg we would actually run needs Rosetta on this Mac.
+    nonisolated static var resolvedFFmpegNeedsRosetta: Bool {
+        guard let path = resolvedFFmpegExecutable else { return false }
+        return !isNativeBinary(atPath: path)
     }
 
     // MARK: - Version Check
@@ -236,6 +310,10 @@ final class FFmpegSetupManager: ObservableObject {
     }
 
     nonisolated private static func testBinaryAsync(at url: URL) async throws {
+        // An Intel-only binary cannot launch on an Apple Silicon Mac without Rosetta,
+        // so report that specifically instead of a generic "test failed".
+        let isNative = isNativeBinary(atPath: url.path)
+
         let process = Process()
         process.executableURL = url
         process.arguments = ["-version"]
@@ -247,13 +325,13 @@ final class FFmpegSetupManager: ObservableObject {
                 if proc.terminationStatus == 0 {
                     continuation.resume()
                 } else {
-                    continuation.resume(throwing: SetupError.binaryTestFailed)
+                    continuation.resume(throwing: isNative ? SetupError.binaryTestFailed : SetupError.rosettaRequired)
                 }
             }
             do {
                 try process.run()
             } catch {
-                continuation.resume(throwing: error)
+                continuation.resume(throwing: isNative ? error : SetupError.rosettaRequired)
             }
         }
     }
@@ -265,6 +343,7 @@ final class FFmpegSetupManager: ObservableObject {
         case extractionFailed(String)
         case binaryTestFailed
         case downloadFailed(String)
+        case rosettaRequired
 
         var errorDescription: String? {
             switch self {
@@ -276,6 +355,8 @@ final class FFmpegSetupManager: ObservableObject {
                 return "FFmpeg の動作確認に失敗しました。ダウンロードファイルを削除して再試行してください。"
             case .downloadFailed(let msg):
                 return "ダウンロードに失敗しました: \(msg)"
+            case .rosettaRequired:
+                return "ダウンロードしたFFmpegはIntel専用ビルドのため、このMacではRosettaが必要です。ターミナルで brew install ffmpeg を実行してApple Silicon対応版を導入するか、softwareupdate --install-rosetta でRosettaをインストールしてください。"
             }
         }
     }

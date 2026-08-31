@@ -51,6 +51,7 @@ struct ContentView: View {
     @State private var currentTask: Task<Void, Never>? // Active task reference
     @State private var showFFmpegSetup = false
     @State private var showFFmpegUpdate = false
+    @State private var ffmpegNeedsRosetta = false
     @ObservedObject private var ffmpegSetup = FFmpegSetupManager.shared
     
     enum Resolution: Int, CaseIterable, Identifiable {
@@ -85,6 +86,27 @@ struct ContentView: View {
                 .font(.footnote)
                 .foregroundColor(.secondary)
                 .padding(.bottom, 5)
+
+            if ffmpegNeedsRosetta {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.orange)
+                    Text(lm.localized("Rosetta Notice"))
+                        .font(.caption)
+                    Spacer()
+                    Button(lm.localized("Switch to Native")) {
+                        showFFmpegSetup = true
+                    }
+                    .font(.caption)
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color.orange.opacity(0.1))
+                .cornerRadius(8)
+                .padding(.horizontal)
+            }
 
             if ffmpegSetup.updateAvailable {
                 HStack(spacing: 8) {
@@ -312,11 +334,14 @@ struct ContentView: View {
         }
         .onAppear {
             showFFmpegSetup = !FFmpegSetupManager.isFFmpegAvailable()
+            ffmpegNeedsRosetta = FFmpegSetupManager.resolvedFFmpegNeedsRosetta
         }
         .task {
             await FFmpegSetupManager.shared.checkForUpdate()
         }
-        .sheet(isPresented: $showFFmpegSetup) {
+        .sheet(isPresented: $showFFmpegSetup, onDismiss: {
+            ffmpegNeedsRosetta = FFmpegSetupManager.resolvedFFmpegNeedsRosetta
+        }) {
             FFmpegSetupView(isPresented: $showFFmpegSetup)
                 .environmentObject(lm)
         }
