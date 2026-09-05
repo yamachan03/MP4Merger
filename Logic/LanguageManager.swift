@@ -130,7 +130,58 @@ class LanguageManager: ObservableObject {
         "FFmpeg Update Description": [.english: "Installed: {0}  →  Recommended: {1}", .japanese: "インストール済み: {0}  →  推奨バージョン: {1}"],
         "Update via Homebrew": [.english: "Update via Homebrew", .japanese: "Homebrewで更新"],
         "Update Complete!": [.english: "Update Complete!", .japanese: "更新完了！"],
-        "Update": [.english: "Update", .japanese: "更新"]
+        "Update": [.english: "Update", .japanese: "更新"],
+
+        // Integrity check mode
+        "Merge Mode": [.english: "Merge", .japanese: "結合"],
+        "Check Mode": [.english: "Check", .japanese: "チェック"],
+        "Check Level": [.english: "Check Level", .japanese: "チェックの深さ"],
+        "Check Level Quick": [.english: "Quick", .japanese: "高速"],
+        "Check Level Standard": [.english: "Standard", .japanese: "標準"],
+        "Check Level Full": [.english: "Full", .japanese: "完全"],
+        "Check Level Quick Detail": [
+            .english: "Container structure only — about 11 seconds per hour of 1080p video. Finds truncated files, but not damage inside the video stream.",
+            .japanese: "コンテナ構造のみ確認。1080pの1時間あたり約11秒。ファイルの切れは分かりますが、映像データ内部の破損は検出できません。"
+        ],
+        "Check Level Standard Detail": [
+            .english: "Parses every packet and decodes keyframes — about 1 minute per hour of 1080p video. Catches almost all damage.",
+            .japanese: "全パケットを解析し、キーフレームをデコード。1080pの1時間あたり約1分。ほとんどの破損をここで検出できます。"
+        ],
+        "Check Level Full Detail": [
+            .english: "Decodes every frame — about 3 minutes per hour of 1080p video. The most thorough check.",
+            .japanese: "全フレームをデコード。1080pの1時間あたり約3分。最も確実な検査です。"
+        ],
+        "Drop files or a folder to check": [
+            .english: "Drop files or a folder to check",
+            .japanese: "チェックしたいファイルまたはフォルダをドロップ"
+        ],
+        "A single file works too; folders are searched for MP4 and MOV": [
+            .english: "A single file works too. Folders are searched for MP4 and MOV files.",
+            .japanese: "ファイル単体でもチェックできます。フォルダの場合はMP4・MOVを探します。"
+        ],
+        "Choose Files or Folders...": [.english: "Choose Files or Folders...", .japanese: "ファイル／フォルダを選択..."],
+        "Select folders or files to check": [.english: "Select folders or files to check", .japanese: "チェックするファイルまたはフォルダを選択"],
+        "Include Subfolders": [.english: "Include Subfolders", .japanese: "サブフォルダを含む"],
+        "{0} files / {1} total": [.english: "{0} files / {1} total", .japanese: "{0} ファイル / 合計 {1}"],
+        "{0} items selected": [.english: "{0} items selected", .japanese: "{0} 件を選択中"],
+        "No MP4 or MOV files found": [.english: "No MP4 or MOV files found", .japanese: "MP4・MOVファイルが見つかりません"],
+        "Estimated time: about {0}": [.english: "Estimated time: about {0}", .japanese: "推定所要時間: 約 {0}"],
+        "Ready to check": [.english: "Ready to check", .japanese: "チェックの準備ができました"],
+        "Start Check": [.english: "Start Check", .japanese: "チェック開始"],
+        "Checked in": [.english: "checked in", .japanese: "所要"],
+        "Hide Log": [.english: "Hide Log", .japanese: "ログを隠す"],
+        "Reveal in Finder": [.english: "Reveal in Finder", .japanese: "Finderで表示"],
+        "Reveal {0} problem files in Finder": [
+            .english: "Reveal {0} problem files in Finder",
+            .japanese: "問題のある {0} 件をFinderで表示"
+        ],
+        "OK": [.english: "OK", .japanese: "正常"],
+        "Suspect": [.english: "Suspect", .japanese: "警告"],
+        "Damaged": [.english: "Damaged", .japanese: "破損"],
+        "FFmpeg is required for checking.": [
+            .english: "FFmpeg is required for checking.",
+            .japanese: "チェックにはFFmpegが必要です。"
+        ]
     ]
     
     func localized(_ key: String) -> String {

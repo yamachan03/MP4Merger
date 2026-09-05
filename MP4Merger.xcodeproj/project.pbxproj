@@ -16,6 +16,9 @@
 		A484FC7C2FA1A3C50085D3F8 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A484FC7B2FA1A3A10085D3F8 /* ContentView.swift */; };
 		A4968AC52FE7D15200982163 /* FFmpegSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4968AC42FE7D15200982163 /* FFmpegSetup.swift */; };
 		A4968AC72FE7D15C00982163 /* FFmpegSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4968AC62FE7D15C00982163 /* FFmpegSetupView.swift */; };
+		A4CH00022FF0000100000002 /* VideoIntegrityChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4CH00012FF0000100000001 /* VideoIntegrityChecker.swift */; };
+		A4CH00042FF0000100000004 /* IntegrityCheckModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4CH00032FF0000100000003 /* IntegrityCheckModel.swift */; };
+		A4CH00062FF0000100000006 /* IntegrityCheckView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4CH00052FF0000100000005 /* IntegrityCheckView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -44,6 +47,9 @@
 		A4968ACC2FE7D34C00982163 /* MP4MergerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MP4MergerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A4C462CC2F2F1F40008A2E4D /* MP4Merger.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MP4Merger.entitlements; sourceTree = "<group>"; };
 		A4D30CB32FB9835E00AC97FC /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
+		A4CH00012FF0000100000001 /* VideoIntegrityChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoIntegrityChecker.swift; sourceTree = "<group>"; };
+		A4CH00032FF0000100000003 /* IntegrityCheckModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrityCheckModel.swift; sourceTree = "<group>"; };
+		A4CH00052FF0000100000005 /* IntegrityCheckView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrityCheckView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -109,6 +115,8 @@
 				A4968AC42FE7D15200982163 /* FFmpegSetup.swift */,
 				A43422B32F056984003D878F /* FFmpegRunner.swift */,
 				A47AF0BE2FB95EB400FD15B2 /* LanguageManager.swift */,
+				A4CH00012FF0000100000001 /* VideoIntegrityChecker.swift */,
+				A4CH00032FF0000100000003 /* IntegrityCheckModel.swift */,
 			);
 			path = Logic;
 			sourceTree = "<group>";
@@ -119,6 +127,7 @@
 				A4968AC62FE7D15C00982163 /* FFmpegSetupView.swift */,
 				A484FC7B2FA1A3A10085D3F8 /* ContentView.swift */,
 				A47AF0C02FB95EE300FD15B2 /* SettingsView.swift */,
+				A4CH00052FF0000100000005 /* IntegrityCheckView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -242,6 +251,9 @@
 				A43422BA2F056984003D878F /* MP4MergerApp.swift in Sources */,
 				A484FC7C2FA1A3C50085D3F8 /* ContentView.swift in Sources */,
 				A47AF0BF2FB95EC700FD15B2 /* LanguageManager.swift in Sources */,
+				A4CH00022FF0000100000002 /* VideoIntegrityChecker.swift in Sources */,
+				A4CH00042FF0000100000004 /* IntegrityCheckModel.swift in Sources */,
+				A4CH00062FF0000100000006 /* IntegrityCheckView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

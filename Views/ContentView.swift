@@ -70,6 +70,20 @@ struct ContentView: View {
     }
     @State private var selectedResolution: Resolution = .original
     @State private var mergeOutput = true
+
+    enum AppMode: Int, CaseIterable, Identifiable {
+        case merge
+        case check
+
+        var id: Int { rawValue }
+        var titleKey: String {
+            switch self {
+            case .merge: return "Merge Mode"
+            case .check: return "Check Mode"
+            }
+        }
+    }
+    @State private var mode: AppMode = .merge
     
     private var appVersion: String {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
@@ -86,6 +100,17 @@ struct ContentView: View {
                 .font(.footnote)
                 .foregroundColor(.secondary)
                 .padding(.bottom, 5)
+
+            Picker("", selection: $mode) {
+                ForEach(AppMode.allCases) { item in
+                    Text(lm.localized(item.titleKey)).tag(item)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(maxWidth: 260)
+            .disabled(isProcessing)
+            .padding(.bottom, 5)
 
             if ffmpegNeedsRosetta {
                 HStack(spacing: 8) {
@@ -129,9 +154,36 @@ struct ContentView: View {
                 .padding(.horizontal)
             }
 
+            if mode == .check {
+                IntegrityCheckView()
+            } else {
+                mergeSection
+            }
+        }
+        .onAppear {
+            showFFmpegSetup = !FFmpegSetupManager.isFFmpegAvailable()
+            ffmpegNeedsRosetta = FFmpegSetupManager.resolvedFFmpegNeedsRosetta
+        }
+        .task {
+            await FFmpegSetupManager.shared.checkForUpdate()
+        }
+        .sheet(isPresented: $showFFmpegSetup, onDismiss: {
+            ffmpegNeedsRosetta = FFmpegSetupManager.resolvedFFmpegNeedsRosetta
+        }) {
+            FFmpegSetupView(isPresented: $showFFmpegSetup)
+                .environmentObject(lm)
+        }
+        .sheet(isPresented: $showFFmpegUpdate) {
+            FFmpegSetupView(isPresented: $showFFmpegUpdate, isUpdate: true)
+                .environmentObject(lm)
+        }
+    }
+
+    private var mergeSection: some View {
+        VStack(spacing: 10) {
             fileListSection
                 .frame(minHeight: 150, maxHeight: .infinity)
-            
+
             // Settings Toolbar
             HStack {
                 Spacer()
@@ -331,23 +383,6 @@ struct ContentView: View {
             }
             .padding()
             .padding(.bottom, 20)
-        }
-        .onAppear {
-            showFFmpegSetup = !FFmpegSetupManager.isFFmpegAvailable()
-            ffmpegNeedsRosetta = FFmpegSetupManager.resolvedFFmpegNeedsRosetta
-        }
-        .task {
-            await FFmpegSetupManager.shared.checkForUpdate()
-        }
-        .sheet(isPresented: $showFFmpegSetup, onDismiss: {
-            ffmpegNeedsRosetta = FFmpegSetupManager.resolvedFFmpegNeedsRosetta
-        }) {
-            FFmpegSetupView(isPresented: $showFFmpegSetup)
-                .environmentObject(lm)
-        }
-        .sheet(isPresented: $showFFmpegUpdate) {
-            FFmpegSetupView(isPresented: $showFFmpegUpdate, isUpdate: true)
-                .environmentObject(lm)
         }
     }
 

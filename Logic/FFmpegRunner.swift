@@ -234,33 +234,30 @@ struct FFmpegRunner {
                 throw FFmpegError.ffmpegNotFound
             }
             
-            for file in files {
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: ffmpegPath)
-                process.arguments = [
-                    "-v", "error",
-                    "-i", file.path,
-                    "-f", "null",
-                    "-c", "copy",
-                    "-"
-                ]
-                let pipe = Pipe()
-                process.standardError = pipe
-                
+            // Shares the check-mode engine. The previous implementation passed
+            // `-c copy`, which never runs the decoder, so it reported damaged
+            // files as clean; it also trusted the exit status, which ffmpeg
+            // leaves at 0 for corrupt input.
+            let checker = VideoIntegrityChecker()
+            let targets = await checker.inspect(urls: files)
+
+            for target in targets {
+                let result: CheckResult
                 do {
-                    try process.run()
-                    process.waitUntilExit()
-                    let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                    let msg = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                    
-                    // ffmpeg will print errors to stderr
-                    if process.terminationStatus != 0 || msg.lowercased().contains("error") || msg.lowercased().contains("invalid") {
-                         throw FFmpegError.commandFailed(LanguageManager.shared.localizedDynamic("File integrity error detected in {0}:\n{1}", args: [file.lastPathComponent, msg]))
-                    }
+                    result = try await checker.check(target: target, level: .full) { _ in }
                 } catch let error as FFmpegError {
                     throw error
                 } catch {
-                     throw FFmpegError.commandFailed("Deep check execution failed for \(file.lastPathComponent)")
+                    throw FFmpegError.commandFailed("Deep check execution failed for \(target.url.lastPathComponent)")
+                }
+
+                if result.status.isProblem {
+                    throw FFmpegError.commandFailed(
+                        LanguageManager.shared.localizedDynamic(
+                            "File integrity error detected in {0}:\n{1}",
+                            args: [target.url.lastPathComponent, result.log]
+                        )
+                    )
                 }
             }
         }
